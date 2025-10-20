@@ -52,9 +52,99 @@ const findMatchingOdds = (game, oddsData) => {
 };
 
 // -------------------- 
+// Login Component
+// --------------------
+function LoginPage({ onLogin }) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError("Please enter your name");
+      return;
+    }
+    sessionStorage.setItem("nflEliminatorUser", trimmedName);
+    onLogin(trimmedName);
+  };
+
+  return (
+    <div style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      minHeight: "100vh",
+      backgroundColor: "#f5f5f5",
+      fontFamily: "Arial, sans-serif"
+    }}>
+      <div style={{
+        backgroundColor: "white",
+        padding: 40,
+        borderRadius: 8,
+        boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+        maxWidth: 400,
+        width: "100%"
+      }}>
+        <h1 style={{ textAlign: "center", color: "#333", marginBottom: 30 }}>
+          NFL Eliminator Pool
+        </h1>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: "block", marginBottom: 8, color: "#555", fontWeight: "bold" }}>
+              Enter Your Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError("");
+              }}
+              placeholder="Your name"
+              style={{
+                width: "100%",
+                padding: 10,
+                border: "1px solid #ddd",
+                borderRadius: 4,
+                fontSize: 16,
+                boxSizing: "border-box"
+              }}
+              autoFocus
+            />
+          </div>
+          {error && (
+            <div style={{ color: "red", marginBottom: 15, fontSize: "0.9em" }}>
+              {error}
+            </div>
+          )}
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              padding: 12,
+              backgroundColor: "#1E90FF",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              fontSize: 16,
+              fontWeight: "bold",
+              cursor: "pointer"
+            }}
+          >
+            Enter Pool
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// -------------------- 
 // App Component
 // --------------------
-function App({ userName = "Guest" }) {
+function App({ userName: initialUserName = null }) {
+  const [userName, setUserName] = useState(initialUserName || sessionStorage.getItem("nflEliminatorUser") || null);
   const [games, setGames] = useState([]);
   const [week, setWeek] = useState(null);
   const [allPicks, setAllPicks] = useState({});
@@ -66,6 +156,15 @@ function App({ userName = "Guest" }) {
   
   const listenersRef = useRef({});
   const lastOddsFetchRef = useRef(null);
+
+  if (!userName) {
+    return <LoginPage onLogin={setUserName} />;
+  }
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("nflEliminatorUser");
+    setUserName(null);
+  };
 
   // -------------------- 
   // Fetch Games & Spreads
@@ -306,7 +405,26 @@ function App({ userName = "Guest" }) {
 
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "auto", fontFamily: "Arial, sans-serif" }}>
-      <h2>NFL Eliminator Pool - Week {week}</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div>
+          <h2 style={{ margin: 0 }}>NFL Eliminator Pool - Week {week}</h2>
+          <p style={{ margin: "5px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
+        </div>
+        <button
+          onClick={handleLogout}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: "#dc3545",
+            color: "white",
+            border: "none",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontSize: "0.9em"
+          }}
+        >
+          Logout
+        </button>
+      </div>
       <h3>
         Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span>
       </h3>
