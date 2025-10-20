@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, onValue, off } from "firebase/database";
+import { getDatabase, ref, set, onValue } from "firebase/database";
 
 // -------------------- 
-// Firebase Config (use env vars in production)
+// Firebase Config
 // --------------------
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyBcCdQkuY1Q8tZxCxXpHZPWIQq_qgIYHHw",
@@ -155,16 +155,6 @@ function App({ userName: initialUserName = null }) {
   const [error, setError] = useState(null);
   
   const listenersRef = useRef({});
-  const lastOddsFetchRef = useRef(null);
-
-  if (!userName) {
-    return <LoginPage onLogin={setUserName} />;
-  }
-
-  const handleLogout = () => {
-    sessionStorage.removeItem("nflEliminatorUser");
-    setUserName(null);
-  };
 
   // -------------------- 
   // Fetch Games & Spreads
@@ -267,9 +257,7 @@ function App({ userName: initialUserName = null }) {
       parsedGames.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
       setGames(parsedGames);
 
-      // -------------------- 
       // Setup Firebase listeners
-      // --------------------
       if (db) {
         setupFirebaseListeners(currentWeek, parsedGames, userName);
       }
@@ -354,6 +342,23 @@ function App({ userName: initialUserName = null }) {
     };
   }, []);
 
+  // Early return after all hooks
+  if (!userName) {
+    return <LoginPage onLogin={setUserName} />;
+  }
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("nflEliminatorUser");
+    setUserName(null);
+  };
+
+  const getEliminatorColor = (status) => status ? "#28a745" : "#dc3545";
+  const getUserStatusColor = () => {
+    if (userStatus === "Alive") return "#28a745";
+    if (userStatus === "Eliminated") return "#dc3545";
+    return "#6c757d";
+  };
+
   // -------------------- 
   // Make Pick
   // --------------------
@@ -374,13 +379,6 @@ function App({ userName: initialUserName = null }) {
       console.error("Pick error:", err);
       setError("Failed to make pick");
     }
-  };
-
-  const getEliminatorColor = (status) => status ? "#28a745" : "#dc3545";
-  const getUserStatusColor = () => {
-    if (userStatus === "Alive") return "#28a745";
-    if (userStatus === "Eliminated") return "#dc3545";
-    return "#6c757d";
   };
 
   // -------------------- 
@@ -425,6 +423,7 @@ function App({ userName: initialUserName = null }) {
           Logout
         </button>
       </div>
+
       <h3>
         Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span>
       </h3>
@@ -442,7 +441,6 @@ function App({ userName: initialUserName = null }) {
           <p>No games available</p>
         ) : (
           games.map(g => {
-            const userPick = allPicks[userName]?.pick;
             const now = new Date();
             const gameDate = new Date(g.kickoff);
             const gameInPast = gameDate < now;
