@@ -141,10 +141,9 @@ function LoginPage({ onLogin }) {
 }
 
 // -------------------- 
-// App Component
+// Main App Component
 // --------------------
-function App({ userName: initialUserName = null }) {
-  const [userName, setUserName] = useState(initialUserName || sessionStorage.getItem("nflEliminatorUser") || null);
+function MainApp({ userName }) {
   const [games, setGames] = useState([]);
   const [week, setWeek] = useState(null);
   const [allPicks, setAllPicks] = useState({});
@@ -173,6 +172,7 @@ function App({ userName: initialUserName = null }) {
       }
 
       const currentWeek = espnData.week?.number || 1;
+      console.log("ESPN API says current week is:", currentWeek);
       setWeek(currentWeek);
 
       // Parse ESPN games
@@ -342,16 +342,6 @@ function App({ userName: initialUserName = null }) {
     };
   }, []);
 
-  // Early return after all hooks
-  if (!userName) {
-    return <LoginPage onLogin={setUserName} />;
-  }
-
-  const handleLogout = () => {
-    sessionStorage.removeItem("nflEliminatorUser");
-    setUserName(null);
-  };
-
   const getEliminatorColor = (status) => status ? "#28a745" : "#dc3545";
   const getUserStatusColor = () => {
     if (userStatus === "Alive") return "#28a745";
@@ -408,20 +398,6 @@ function App({ userName: initialUserName = null }) {
           <h2 style={{ margin: 0 }}>NFL Eliminator Pool - Week {week}</h2>
           <p style={{ margin: "5px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
         </div>
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#dc3545",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-            cursor: "pointer",
-            fontSize: "0.9em"
-          }}
-        >
-          Logout
-        </button>
       </div>
 
       <h3>
@@ -609,6 +585,28 @@ function App({ userName: initialUserName = null }) {
       )}
     </div>
   );
+}
+
+// -------------------- 
+// App Wrapper with Login Logic
+// --------------------
+function App({ userName: initialUserName = null }) {
+  const [userName, setUserName] = useState(() => {
+    const stored = sessionStorage.getItem("nflEliminatorUser");
+    console.log("Initial userName check:", { initialUserName, stored });
+    return initialUserName || stored || null;
+  });
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("nflEliminatorUser");
+    setUserName(null);
+  };
+
+  if (!userName) {
+    return <LoginPage onLogin={setUserName} />;
+  }
+
+  return <MainApp userName={userName} onLogout={handleLogout} />;
 }
 
 export default App;

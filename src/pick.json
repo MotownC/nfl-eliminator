@@ -89,6 +89,22 @@
       "Wendi": { "pick": "Steelers", "result": true },
       "Will": { "pick": "Colts", "result": true },
       "Andrea": { "pick": "Bills", "result": false }
+    },
+    "7": {
+      "Beth": { "pick": "Chiefs", "result": true },
+      "Craig": { "pick": "Chiefs", "result": true },
+      "Jennifer": { "pick": "Chiefs", "result": true },
+      "Sally": { "pick": "Chiefs", "result": true },
+      "Curt": { "pick": "Chiefs", "result": true },
+      "Keith": { "pick": "Patriots", "result": true },
+      "Riley": { "pick": "Chiefs", "result": true },
+      "Seth": { "pick": "Patriots", "result": true },
+      "Libby": { "pick": "Steelers", "result": false },
+      "Kyle": { "pick": "Bears", "result": true },
+      "Wendi": { "pick": "Chiefs", "result": true },
+      "Will": { "pick": "Chiefs", "result": true },
+      "Andrea": { "pick": "Broncos", "result": true }
     }
+
   }
 }
