@@ -450,8 +450,6 @@ function MainApp({ userName }) {
             const homeAlreadyPickedByUser = userPreviousPicks.some(pick => 
               getTeamNickname(pick) === homeNickname || pick === g.home
             );
-            const awayAlreadyPickedThisWeek = Object.values(allPicks).some(p => p.pick === g.away);
-            const homeAlreadyPickedThisWeek = Object.values(allPicks).some(p => p.pick === g.home);
 
             return (
               <div
@@ -490,15 +488,15 @@ function MainApp({ userName }) {
                   </div>
                 )}
                 <button
-                  disabled={gameInPast || awayAlreadyPickedThisWeek || awayAlreadyPickedByUser}
+                  disabled={gameInPast || awayAlreadyPickedByUser}
                   style={{
                     marginRight: 10,
                     padding: "6px 12px",
-                    backgroundColor: gameInPast || awayAlreadyPickedThisWeek || awayAlreadyPickedByUser ? "#ccc" : "#1E90FF",
+                    backgroundColor: gameInPast || awayAlreadyPickedByUser ? "#ccc" : "#1E90FF",
                     color: awayAlreadyPickedByUser ? "#666" : "white",
                     border: "none",
                     borderRadius: 4,
-                    cursor: gameInPast || awayAlreadyPickedThisWeek || awayAlreadyPickedByUser ? "not-allowed" : "pointer",
+                    cursor: gameInPast || awayAlreadyPickedByUser ? "not-allowed" : "pointer",
                     opacity: awayAlreadyPickedByUser ? 0.5 : 1
                   }}
                   onClick={() => makePick(g.away)}
@@ -507,14 +505,14 @@ function MainApp({ userName }) {
                   Pick {g.away}
                 </button>
                 <button
-                  disabled={gameInPast || homeAlreadyPickedThisWeek || homeAlreadyPickedByUser}
+                  disabled={gameInPast || homeAlreadyPickedByUser}
                   style={{
                     padding: "6px 12px",
-                    backgroundColor: gameInPast || homeAlreadyPickedThisWeek || homeAlreadyPickedByUser ? "#ccc" : "#1E90FF",
+                    backgroundColor: gameInPast || homeAlreadyPickedByUser ? "#ccc" : "#1E90FF",
                     color: homeAlreadyPickedByUser ? "#666" : "white",
                     border: "none",
                     borderRadius: 4,
-                    cursor: gameInPast || homeAlreadyPickedThisWeek || homeAlreadyPickedByUser ? "not-allowed" : "pointer",
+                    cursor: gameInPast || homeAlreadyPickedByUser ? "not-allowed" : "pointer",
                     opacity: homeAlreadyPickedByUser ? 0.5 : 1
                   }}
                   onClick={() => makePick(g.home)}
