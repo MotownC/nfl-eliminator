@@ -609,7 +609,7 @@ function MainApp({ userName }) {
                         key={wk}
                         style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}
                       >
-                        {pick}
+                        {getTeamNickname(pick)}
                         {result === "Pending" ? null : result === true ? (
                           <span style={{ color: "green", marginLeft: 4, fontWeight: "bold" }}>
                             ✓
