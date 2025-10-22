@@ -545,12 +545,13 @@ function MainApp({ userName }) {
       {Object.keys(seasonStandings).length === 0 ? (
         <p>No standings yet</p>
       ) : (
-        <ul>
+        <ul style={{ listStyle: "none", padding: 0 }}>
           {Object.entries(seasonStandings)
             .sort((a, b) => (b[1]?.seasonPoints || 0) - (a[1]?.seasonPoints || 0))
             .map(([user, stats]) => (
-              <li key={user}>
-                {user} - {stats?.seasonPoints || 0} pts
+              <li key={user} style={{ marginBottom: 5 }}>
+                <span style={{ display: "inline-block", width: "150px" }}>{user}</span>
+                <span>{stats?.seasonPoints || 0} wins</span>
               </li>
             ))}
         </ul>
