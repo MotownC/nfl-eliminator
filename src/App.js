@@ -580,48 +580,65 @@ function MainApp({ userName }) {
             </tr>
           </thead>
           <tbody>
-            {Object.keys(seasonStandings).map(user => (
-              <tr key={user}>
-                <td style={{ border: "1px solid #ccc", padding: 6, fontWeight: "bold" }}>
-                  {user}
-                </td>
-                {Object.keys(weeklyPicks)
-                  .sort((a, b) => Number(a) - Number(b))
-                  .map(wk => {
-                    const pick = weeklyPicks[wk]?.[user]?.pick;
-                    const result = weeklyPicks[wk]?.[user]?.result;
+            {Object.keys(seasonStandings).map(user => {
+              const currentUserHasPicked = weeklyPicks[week]?.[userName]?.pick;
+              
+              return (
+                <tr key={user}>
+                  <td style={{ border: "1px solid #ccc", padding: 6, fontWeight: "bold" }}>
+                    {user}
+                  </td>
+                  {Object.keys(weeklyPicks)
+                    .sort((a, b) => Number(a) - Number(b))
+                    .map(wk => {
+                      const pick = weeklyPicks[wk]?.[user]?.pick;
+                      const result = weeklyPicks[wk]?.[user]?.result;
+                      const isCurrentWeek = Number(wk) === week;
 
-                    if (!pick) {
+                      if (!pick) {
+                        return (
+                          <td
+                            key={wk}
+                            style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}
+                          >
+                            -
+                          </td>
+                        );
+                      }
+
+                      // Hide current week picks if user hasn't picked yet
+                      if (isCurrentWeek && !currentUserHasPicked) {
+                        return (
+                          <td
+                            key={wk}
+                            style={{ border: "1px solid #ccc", padding: 6, textAlign: "center", color: "#999" }}
+                          >
+                            🔒
+                          </td>
+                        );
+                      }
+
                       return (
                         <td
                           key={wk}
                           style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}
                         >
-                          -
+                          {getTeamNickname(pick)}
+                          {result === "Pending" ? null : result === true ? (
+                            <span style={{ color: "green", marginLeft: 4, fontWeight: "bold" }}>
+                              ✓
+                            </span>
+                          ) : (
+                            <span style={{ color: "red", marginLeft: 4, fontWeight: "bold" }}>
+                              ✗
+                            </span>
+                          )}
                         </td>
                       );
-                    }
-
-                    return (
-                      <td
-                        key={wk}
-                        style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}
-                      >
-                        {getTeamNickname(pick)}
-                        {result === "Pending" ? null : result === true ? (
-                          <span style={{ color: "green", marginLeft: 4, fontWeight: "bold" }}>
-                            ✓
-                          </span>
-                        ) : (
-                          <span style={{ color: "red", marginLeft: 4, fontWeight: "bold" }}>
-                            ✗
-                          </span>
-                        )}
-                      </td>
-                    );
-                  })}
-              </tr>
-            ))}
+                    })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
