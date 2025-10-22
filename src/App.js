@@ -39,6 +39,15 @@ const normalizeTeamName = (name) => {
   return name.toLowerCase().trim().replace(/\s+/g, " ");
 };
 
+const getTeamNickname = (fullName) => {
+  if (!fullName) return "";
+  // Get the last word (team nickname) from full name
+  // "Philadelphia Eagles" -> "Eagles"
+  // "Kansas City Chiefs" -> "Chiefs"
+  const parts = fullName.trim().split(" ");
+  return parts[parts.length - 1];
+};
+
 const findMatchingOdds = (game, oddsData) => {
   if (!oddsData || oddsData.length === 0) return null;
   
@@ -429,8 +438,18 @@ function MainApp({ userName }) {
               .map(([_, picks]) => picks[userName]?.pick)
               .filter(Boolean);
             
-            const awayAlreadyPickedByUser = userPreviousPicks.includes(g.away);
-            const homeAlreadyPickedByUser = userPreviousPicks.includes(g.home);
+            console.log(`User ${userName} previous picks:`, userPreviousPicks);
+            
+            // Compare using team nicknames
+            const awayNickname = getTeamNickname(g.away);
+            const homeNickname = getTeamNickname(g.home);
+            
+            const awayAlreadyPickedByUser = userPreviousPicks.some(pick => 
+              getTeamNickname(pick) === awayNickname || pick === g.away
+            );
+            const homeAlreadyPickedByUser = userPreviousPicks.some(pick => 
+              getTeamNickname(pick) === homeNickname || pick === g.home
+            );
             const awayAlreadyPickedThisWeek = Object.values(allPicks).some(p => p.pick === g.away);
             const homeAlreadyPickedThisWeek = Object.values(allPicks).some(p => p.pick === g.home);
 
@@ -460,6 +479,16 @@ function MainApp({ userName }) {
                     "Spreads unavailable"
                   )}
                 </div>
+                {awayAlreadyPickedByUser && (
+                  <div style={{ fontSize: "0.85em", color: "#999", marginBottom: 5 }}>
+                    ⚠️ You already picked {g.away}
+                  </div>
+                )}
+                {homeAlreadyPickedByUser && (
+                  <div style={{ fontSize: "0.85em", color: "#999", marginBottom: 5 }}>
+                    ⚠️ You already picked {g.home}
+                  </div>
+                )}
                 <button
                   disabled={gameInPast || awayAlreadyPickedThisWeek || awayAlreadyPickedByUser}
                   style={{
