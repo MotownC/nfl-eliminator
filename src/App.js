@@ -1,4 +1,4 @@
-// Updated: October 21, 2025
+// Updated: October 22, 2025
 
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
@@ -422,8 +422,17 @@ function MainApp({ userName }) {
             const now = new Date();
             const gameDate = new Date(g.kickoff);
             const gameInPast = gameDate < now;
-            const awayAlreadyPicked = Object.values(allPicks).some(p => p.pick === g.away);
-            const homeAlreadyPicked = Object.values(allPicks).some(p => p.pick === g.home);
+            
+            // Check if current user has picked these teams before
+            const userPreviousPicks = Object.entries(weeklyPicks)
+              .filter(([wk, _]) => Number(wk) < week) // Only previous weeks
+              .map(([_, picks]) => picks[userName]?.pick)
+              .filter(Boolean);
+            
+            const awayAlreadyPickedByUser = userPreviousPicks.includes(g.away);
+            const homeAlreadyPickedByUser = userPreviousPicks.includes(g.home);
+            const awayAlreadyPickedThisWeek = Object.values(allPicks).some(p => p.pick === g.away);
+            const homeAlreadyPickedThisWeek = Object.values(allPicks).some(p => p.pick === g.home);
 
             return (
               <div
@@ -452,31 +461,35 @@ function MainApp({ userName }) {
                   )}
                 </div>
                 <button
-                  disabled={gameInPast || awayAlreadyPicked}
+                  disabled={gameInPast || awayAlreadyPickedThisWeek || awayAlreadyPickedByUser}
                   style={{
                     marginRight: 10,
                     padding: "6px 12px",
-                    backgroundColor: gameInPast || awayAlreadyPicked ? "#ccc" : "#1E90FF",
-                    color: "white",
+                    backgroundColor: gameInPast || awayAlreadyPickedThisWeek || awayAlreadyPickedByUser ? "#ccc" : "#1E90FF",
+                    color: awayAlreadyPickedByUser ? "#666" : "white",
                     border: "none",
                     borderRadius: 4,
-                    cursor: gameInPast || awayAlreadyPicked ? "not-allowed" : "pointer"
+                    cursor: gameInPast || awayAlreadyPickedThisWeek || awayAlreadyPickedByUser ? "not-allowed" : "pointer",
+                    opacity: awayAlreadyPickedByUser ? 0.5 : 1
                   }}
                   onClick={() => makePick(g.away)}
+                  title={awayAlreadyPickedByUser ? "You already picked this team" : ""}
                 >
                   Pick {g.away}
                 </button>
                 <button
-                  disabled={gameInPast || homeAlreadyPicked}
+                  disabled={gameInPast || homeAlreadyPickedThisWeek || homeAlreadyPickedByUser}
                   style={{
                     padding: "6px 12px",
-                    backgroundColor: gameInPast || homeAlreadyPicked ? "#ccc" : "#1E90FF",
-                    color: "white",
+                    backgroundColor: gameInPast || homeAlreadyPickedThisWeek || homeAlreadyPickedByUser ? "#ccc" : "#1E90FF",
+                    color: homeAlreadyPickedByUser ? "#666" : "white",
                     border: "none",
                     borderRadius: 4,
-                    cursor: gameInPast || homeAlreadyPicked ? "not-allowed" : "pointer"
+                    cursor: gameInPast || homeAlreadyPickedThisWeek || homeAlreadyPickedByUser ? "not-allowed" : "pointer",
+                    opacity: homeAlreadyPickedByUser ? 0.5 : 1
                   }}
                   onClick={() => makePick(g.home)}
+                  title={homeAlreadyPickedByUser ? "You already picked this team" : ""}
                 >
                   Pick {g.home}
                 </button>
