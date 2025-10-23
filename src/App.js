@@ -577,35 +577,50 @@ function MainApp({ userName }) {
         )}
       </div>
 
-      {/* Eliminator Phase */}
-      <h3>Eliminator Status</h3>
-      {Object.keys(seasonStandings).length === 0 ? (
-        <p>No standings yet</p>
-      ) : (
-        <ul>
-          {Object.entries(seasonStandings).map(([user, stats]) => (
-            <li key={user} style={{ color: getEliminatorColor(stats?.eliminatorActive) }}>
-              {user} - {stats?.eliminatorActive ? "Alive" : "Eliminated"}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Season Standings */}
+      {/* Season Standings - Combined with Eliminator Status */}
       <h3>Season Standings</h3>
       {Object.keys(seasonStandings).length === 0 ? (
         <p>No standings yet</p>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {Object.entries(seasonStandings)
-            .sort((a, b) => (b[1]?.seasonPoints || 0) - (a[1]?.seasonPoints || 0))
-            .map(([user, stats]) => (
-              <li key={user} style={{ marginBottom: 5 }}>
-                <span style={{ display: "inline-block", width: "150px" }}>{user}</span>
-                <span>{stats?.seasonPoints || 0} wins</span>
-              </li>
-            ))}
-        </ul>
+        <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: 30 }}>
+          <thead>
+            <tr>
+              <th style={{ border: "1px solid #ccc", padding: 8, backgroundColor: "#f0f0f0", textAlign: "left" }}>
+                Name
+              </th>
+              <th style={{ border: "1px solid #ccc", padding: 8, backgroundColor: "#f0f0f0", textAlign: "center" }}>
+                Overall Wins
+              </th>
+              <th style={{ border: "1px solid #ccc", padding: 8, backgroundColor: "#f0f0f0", textAlign: "center" }}>
+                Eliminator Status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(seasonStandings)
+              .sort((a, b) => {
+                const winsA = a[1]?.seasonPoints || 0;
+                const winsB = b[1]?.seasonPoints || 0;
+                if (winsB !== winsA) {
+                  return winsB - winsA; // Sort by wins descending
+                }
+                return a[0].localeCompare(b[0]); // Then alphabetically by name
+              })
+              .map(([user, stats]) => (
+                <tr key={user}>
+                  <td style={{ border: "1px solid #ccc", padding: 8 }}>
+                    {user}
+                  </td>
+                  <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>
+                    {stats?.seasonPoints || 0}
+                  </td>
+                  <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center", fontSize: "1.5em" }}>
+                    {stats?.eliminatorActive ? "😊" : "💀"}
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
       )}
 
       {/* Week-by-Week Summary Table */}
