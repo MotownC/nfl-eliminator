@@ -1,4 +1,4 @@
-// Updated: October 22, 2025
+// Updated: October 23, 2025
 
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
@@ -163,8 +163,10 @@ function MainApp({ userName }) {
   const [weeklyPicks, setWeeklyPicks] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
   
   const listenersRef = useRef({});
+  const summaryRef = useRef(null);
 
   // -------------------- 
   // Fetch Games & Spreads
@@ -369,6 +371,12 @@ function MainApp({ userName }) {
       return;
     }
 
+    // Check if user already has a pick for this week
+    if (allPicks[userName]?.pick) {
+      setError("You've already made your pick for this week. Picks cannot be changed.");
+      return;
+    }
+
     try {
       const weekRef = ref(db, `weeks/${week}/${userName}`);
       await set(weekRef, {
@@ -376,9 +384,23 @@ function MainApp({ userName }) {
         result: "Pending",
         timestamp: new Date().toISOString()
       });
+      
+      // Show success message
+      setSuccessMessage(`✅ Your pick for Week ${week}: ${team}`);
+      setError(null);
+      
+      // Scroll to summary table after short delay
+      setTimeout(() => {
+        summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 500);
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 5000);
     } catch (err) {
       console.error("Pick error:", err);
-      setError("Failed to make pick");
+      setError("Failed to make pick. Please try again.");
     }
   };
 
@@ -415,8 +437,29 @@ function MainApp({ userName }) {
         Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span>
       </h3>
 
+      {successMessage && (
+        <div style={{ 
+          color: "green", 
+          backgroundColor: "#d4edda",
+          border: "1px solid #c3e6cb",
+          padding: 12,
+          borderRadius: 4,
+          marginBottom: 15,
+          fontWeight: "bold"
+        }}>
+          {successMessage}
+        </div>
+      )}
+
       {error && (
-        <div style={{ color: "orange", marginBottom: 15 }}>
+        <div style={{ 
+          color: "#721c24",
+          backgroundColor: "#f8d7da",
+          border: "1px solid #f5c6cb",
+          padding: 12,
+          borderRadius: 4,
+          marginBottom: 15
+        }}>
           {error}
         </div>
       )}
@@ -450,6 +493,12 @@ function MainApp({ userName }) {
             const homeAlreadyPickedByUser = userPreviousPicks.some(pick => 
               getTeamNickname(pick) === homeNickname || pick === g.home
             );
+            
+            // Check if user has made their pick for this week
+            const userPickThisWeek = allPicks[userName]?.pick;
+            const userPickedAway = userPickThisWeek === g.away || getTeamNickname(userPickThisWeek) === awayNickname;
+            const userPickedHome = userPickThisWeek === g.home || getTeamNickname(userPickThisWeek) === homeNickname;
+            const hasPickedThisWeek = !!userPickThisWeek;
 
             return (
               <div
@@ -488,37 +537,39 @@ function MainApp({ userName }) {
                   </div>
                 )}
                 <button
-                  disabled={gameInPast || awayAlreadyPickedByUser}
+                  disabled={gameInPast || awayAlreadyPickedByUser || (hasPickedThisWeek && !userPickedAway)}
                   style={{
                     marginRight: 10,
                     padding: "6px 12px",
-                    backgroundColor: gameInPast || awayAlreadyPickedByUser ? "#ccc" : "#1E90FF",
-                    color: awayAlreadyPickedByUser ? "#666" : "white",
+                    backgroundColor: userPickedAway ? "#28a745" : (gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF",
+                    color: "white",
                     border: "none",
                     borderRadius: 4,
-                    cursor: gameInPast || awayAlreadyPickedByUser ? "not-allowed" : "pointer",
-                    opacity: awayAlreadyPickedByUser ? 0.5 : 1
+                    cursor: (gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer",
+                    opacity: awayAlreadyPickedByUser ? 0.5 : 1,
+                    fontWeight: userPickedAway ? "bold" : "normal"
                   }}
                   onClick={() => makePick(g.away)}
-                  title={awayAlreadyPickedByUser ? "You already picked this team" : ""}
+                  title={awayAlreadyPickedByUser ? "You already picked this team" : hasPickedThisWeek ? "Pick locked in" : ""}
                 >
-                  Pick {g.away}
+                  {userPickedAway ? `✓ ${g.away}` : `Pick ${g.away}`}
                 </button>
                 <button
-                  disabled={gameInPast || homeAlreadyPickedByUser}
+                  disabled={gameInPast || homeAlreadyPickedByUser || (hasPickedThisWeek && !userPickedHome)}
                   style={{
                     padding: "6px 12px",
-                    backgroundColor: gameInPast || homeAlreadyPickedByUser ? "#ccc" : "#1E90FF",
-                    color: homeAlreadyPickedByUser ? "#666" : "white",
+                    backgroundColor: userPickedHome ? "#28a745" : (gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF",
+                    color: "white",
                     border: "none",
                     borderRadius: 4,
-                    cursor: gameInPast || homeAlreadyPickedByUser ? "not-allowed" : "pointer",
-                    opacity: homeAlreadyPickedByUser ? 0.5 : 1
+                    cursor: (gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer",
+                    opacity: homeAlreadyPickedByUser ? 0.5 : 1,
+                    fontWeight: userPickedHome ? "bold" : "normal"
                   }}
                   onClick={() => makePick(g.home)}
-                  title={homeAlreadyPickedByUser ? "You already picked this team" : ""}
+                  title={homeAlreadyPickedByUser ? "You already picked this team" : hasPickedThisWeek ? "Pick locked in" : ""}
                 >
-                  Pick {g.home}
+                  {userPickedHome ? `✓ ${g.home}` : `Pick ${g.home}`}
                 </button>
               </div>
             );
@@ -558,7 +609,7 @@ function MainApp({ userName }) {
       )}
 
       {/* Week-by-Week Summary Table */}
-      <h3>Weekly Picks Summary</h3>
+      <h3 ref={summaryRef}>Weekly Picks Summary</h3>
       {Object.keys(weeklyPicks).length === 0 ? (
         <p>No picks yet</p>
       ) : (
