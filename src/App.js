@@ -615,6 +615,11 @@ function MainApp({ userName }) {
 
       {/* Season Standings - Combined with Eliminator Status */}
       <h3>Season Standings</h3>
+      {/* Debug info */}
+      <div style={{ fontSize: '0.8em', color: '#666', marginBottom: 10 }}>
+        Debug: weeklyPicks has {Object.keys(weeklyPicks).length} weeks, 
+        Week keys: {Object.keys(weeklyPicks).join(', ')}
+      </div>
       {Object.keys(seasonStandings).length === 0 ? (
         <p>No standings yet</p>
       ) : (
@@ -762,7 +767,9 @@ function MainApp({ userName }) {
         textAlign: "center"
       }}>
         <h3 style={{ margin: "0 0 10px 0" }}>Entry Fee Payment</h3>
-        
+        <p style={{ margin: "0 0 15px 0", color: "#666" }}>
+          Entry Fee: <strong>$20</strong>
+        </p>
         <a
           href="https://venmo.com/u/Craig-Anderson-75?txn=pay&amount=20&note=NFL%20Eliminator%20Entry"
           target="_blank"
