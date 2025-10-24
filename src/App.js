@@ -767,9 +767,7 @@ function MainApp({ userName }) {
         textAlign: "center"
       }}>
         <h3 style={{ margin: "0 0 10px 0" }}>Entry Fee Payment</h3>
-        <p style={{ margin: "0 0 15px 0", color: "#666" }}>
-          Entry Fee: <strong>$20</strong>
-        </p>
+       
         <a
           href="https://venmo.com/u/Craig-Anderson-75?txn=pay&amount=20&note=NFL%20Eliminator%20Entry"
           target="_blank"
