@@ -1,4 +1,4 @@
-// Updated: October 23, 2025
+// Updated: October 24, 2025
 
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
@@ -362,6 +362,42 @@ function MainApp({ userName }) {
     return "#6c757d";
   };
 
+  // Calculate streak for a user
+  const calculateStreak = (user) => {
+    const weeks = Object.keys(weeklyPicks).sort((a, b) => Number(b) - Number(a)); // Most recent first
+    if (weeks.length === 0) return "-";
+
+    let streak = 0;
+    let streakType = null; // 'won' or 'lost'
+
+    for (const wk of weeks) {
+      const pick = weeklyPicks[wk]?.[user];
+      if (!pick) continue; // Skip weeks where user didn't pick
+
+      const result = pick.result;
+      if (result === "Pending" || result === null || result === undefined) {
+        break; // Stop at pending games
+      }
+
+      const isWin = result === true;
+      
+      if (streakType === null) {
+        // First result sets the streak type
+        streakType = isWin ? 'won' : 'lost';
+        streak = 1;
+      } else if ((streakType === 'won' && isWin) || (streakType === 'lost' && !isWin)) {
+        // Streak continues
+        streak++;
+      } else {
+        // Streak broken
+        break;
+      }
+    }
+
+    if (streak === 0) return "-";
+    return `${streakType === 'won' ? 'Won' : 'Lost'} ${streak}`;
+  };
+
   // -------------------- 
   // Make Pick
   // --------------------
@@ -592,6 +628,9 @@ function MainApp({ userName }) {
                 Overall Wins
               </th>
               <th style={{ border: "1px solid #ccc", padding: 8, backgroundColor: "#f0f0f0", textAlign: "center" }}>
+                Streak
+              </th>
+              <th style={{ border: "1px solid #ccc", padding: 8, backgroundColor: "#f0f0f0", textAlign: "center" }}>
                 Eliminator Status
               </th>
             </tr>
@@ -613,6 +652,9 @@ function MainApp({ userName }) {
                   </td>
                   <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>
                     {stats?.seasonPoints || 0}
+                  </td>
+                  <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>
+                    {calculateStreak(user)}
                   </td>
                   <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center", fontSize: "1.5em" }}>
                     {stats?.eliminatorActive ? "😊" : "💀"}
@@ -709,6 +751,41 @@ function MainApp({ userName }) {
           </tbody>
         </table>
       )}
+
+      {/* Payment Section */}
+      <div style={{
+        marginTop: 40,
+        padding: 20,
+        backgroundColor: "#f8f9fa",
+        borderRadius: 8,
+        border: "1px solid #dee2e6",
+        textAlign: "center"
+      }}>
+        <h3 style={{ margin: "0 0 10px 0" }}>Entry Fee Payment</h3>
+        <p style={{ margin: "0 0 15px 0", color: "#666" }}>
+          Entry Fee: <strong>$20</strong>
+        </p>
+        <a
+          href="https://venmo.com/@Craig-Anderson-75?txn=pay&amount=20&note=NFL%20Eliminator%20Entry"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "inline-block",
+            padding: "12px 24px",
+            backgroundColor: "#3D95CE",
+            color: "white",
+            textDecoration: "none",
+            borderRadius: 6,
+            fontWeight: "bold",
+            fontSize: "16px"
+          }}
+        >
+          Pay $20 via Venmo
+        </a>
+        <p style={{ margin: "15px 0 0 0", fontSize: "0.9em", color: "#666" }}>
+          Please include your name in the payment note
+        </p>
+      </div>
     </div>
   );
 }
