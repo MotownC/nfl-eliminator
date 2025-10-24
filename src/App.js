@@ -766,7 +766,7 @@ function MainApp({ userName }) {
           Entry Fee: <strong>$20</strong>
         </p>
         <a
-          href="https://venmo.com/@Craig-Anderson-75?txn=pay&amount=20&note=NFL%20Eliminator%20Entry"
+          href="https://venmo.com/u/Craig-Anderson-75?txn=pay&amount=20&note=NFL%20Eliminator%20Entry"
           target="_blank"
           rel="noopener noreferrer"
           style={{
