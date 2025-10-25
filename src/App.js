@@ -36,6 +36,27 @@ const getTeamNickname = (fullName) => {
   return parts[parts.length - 1];
 };
 
+// Map team names to ESPN abbreviations for logos
+const getTeamAbbr = (teamName) => {
+  const abbrs = {
+    'Cardinals': 'ARI', 'Falcons': 'ATL', 'Ravens': 'BAL', 'Bills': 'BUF',
+    'Panthers': 'CAR', 'Bears': 'CHI', 'Bengals': 'CIN', 'Browns': 'CLE',
+    'Cowboys': 'DAL', 'Broncos': 'DEN', 'Lions': 'DET', 'Packers': 'GB',
+    'Texans': 'HOU', 'Colts': 'IND', 'Jaguars': 'JAX', 'Chiefs': 'KC',
+    'Raiders': 'LV', 'Chargers': 'LAC', 'Rams': 'LAR', 'Dolphins': 'MIA',
+    'Vikings': 'MIN', 'Patriots': 'NE', 'Saints': 'NO', 'Giants': 'NYG',
+    'Jets': 'NYJ', 'Eagles': 'PHI', 'Steelers': 'PIT', '49ers': 'SF',
+    'Seahawks': 'SEA', 'Buccaneers': 'TB', 'Titans': 'TEN', 'Commanders': 'WAS'
+  };
+  const nickname = getTeamNickname(teamName);
+  return abbrs[nickname] || 'NFL';
+};
+
+const getTeamLogo = (teamName) => {
+  const abbr = getTeamAbbr(teamName);
+  return `https://a.espncdn.com/i/teamlogos/nfl/500/${abbr}.png`;
+};
+
 const findMatchingOdds = (game, oddsData) => {
   if (!oddsData || oddsData.length === 0) return null;
   const homeName = normalizeTeamName(game.home);
@@ -295,10 +316,10 @@ function MainApp({ userName }) {
             <div key={g.id} style={{ marginBottom: 15, border: "1px solid #ccc", padding: 12, borderRadius: 6, backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9" }}>
               <div>{gameDate.toLocaleString()}</div>
               <div style={{ margin: "10px 0", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
-                <img src={g.awayLogo} alt={g.away} style={{ width: 30, height: 30 }} />
+                <img src={getTeamLogo(g.away)} alt={g.away} style={{ width: 30, height: 30 }} onError={(e) => e.target.style.display = 'none'} />
                 <span>{g.away}</span>
                 <span style={{ margin: "0 5px" }}>vs</span>
-                <img src={g.homeLogo} alt={g.home} style={{ width: 30, height: 30 }} />
+                <img src={getTeamLogo(g.home)} alt={g.home} style={{ width: 30, height: 30 }} onError={(e) => e.target.style.display = 'none'} />
                 <span>{g.home}</span>
               </div>
               <div style={{ fontSize: "0.9em", color: "#666", marginBottom: 10 }}>
