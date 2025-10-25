@@ -622,6 +622,10 @@ function MainApp({ userName }) {
         <br/>
         Test Craig's data: Week 7 = {JSON.stringify(weeklyPicks['7']?.['Craig'])}
         <br/>
+        Test Craig's data: Week 8 = {JSON.stringify(weeklyPicks['8']?.['Craig'])}
+        <br/>
+        All Craig picks: {Object.keys(weeklyPicks).map(wk => `W${wk}:${weeklyPicks[wk]?.['Craig']?.result || 'none'}`).join(', ')}
+        <br/>
         Craig's streak calculation: {calculateStreak('Craig')}
       </div>
       {Object.keys(seasonStandings).length === 0 ? (
