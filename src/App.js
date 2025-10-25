@@ -68,6 +68,12 @@ const findMatchingOdds = (game, oddsData) => {
   });
 };
 
+// Approved usernames - only these people can log in
+const APPROVED_USERS = [
+  'Beth', 'Craig', 'Jennifer', 'Sally', 'Curt', 'Keith', 
+  'Riley', 'Seth', 'Libby', 'Kyle', 'Wendi', 'Will', 'Andrea'
+];
+
 function LoginPage({ onLogin }) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -79,8 +85,19 @@ function LoginPage({ onLogin }) {
       setError("Please enter your name");
       return;
     }
-    sessionStorage.setItem("nflEliminatorUser", trimmedName);
-    onLogin(trimmedName);
+    
+    // Check if user is in approved list (case-insensitive)
+    const approvedUser = APPROVED_USERS.find(
+      user => user.toLowerCase() === trimmedName.toLowerCase()
+    );
+    
+    if (!approvedUser) {
+      setError("Name not recognized. Please check your spelling or contact the pool administrator.");
+      return;
+    }
+    
+    sessionStorage.setItem("nflEliminatorUser", approvedUser);
+    onLogin(approvedUser);
   };
 
   return (
