@@ -400,8 +400,7 @@ function MainApp({ userName }) {
         </table>
       )}
       <div style={{ marginTop: 40, padding: 20, backgroundColor: "#f8f9fa", borderRadius: 8, border: "1px solid #dee2e6", textAlign: "center" }}>
-        <h3 style={{ margin: "0 0 10px 0" }}>Entry Fee Payment</h3>
-        <p style={{ margin: "0 0 15px 0", color: "#666" }}>Entry Fee: <strong>$20</strong></p>
+        <h3 style={{ margin: "0 0 15px 0" }}>Entry Fee Payment</h3>
         <a href="https://venmo.com/u/Craig-Anderson-75?txn=pay&amount=20&note=NFL%20Eliminator%20Entry" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", padding: "12px 24px", backgroundColor: "#3D95CE", color: "white", textDecoration: "none", borderRadius: 6, fontWeight: "bold", fontSize: "16px" }}>Pay $20 via Venmo</a>
         <p style={{ margin: "15px 0 0 0", fontSize: "0.9em", color: "#666" }}>Please include your name in the payment note</p>
       </div>
