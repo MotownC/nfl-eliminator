@@ -1,4 +1,4 @@
-// Updated: October 24, 2025
+// Updated: October 25, 2025
 
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
@@ -294,7 +294,13 @@ function MainApp({ userName }) {
           return (
             <div key={g.id} style={{ marginBottom: 15, border: "1px solid #ccc", padding: 12, borderRadius: 6, backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9" }}>
               <div>{gameDate.toLocaleString()}</div>
-              <div style={{ margin: "6px 0", fontWeight: "bold" }}>{g.away} vs {g.home}</div>
+              <div style={{ margin: "10px 0", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
+                <img src={g.awayLogo} alt={g.away} style={{ width: 30, height: 30 }} />
+                <span>{g.away}</span>
+                <span style={{ margin: "0 5px" }}>vs</span>
+                <img src={g.homeLogo} alt={g.home} style={{ width: 30, height: 30 }} />
+                <span>{g.home}</span>
+              </div>
               <div style={{ fontSize: "0.9em", color: "#666", marginBottom: 10 }}>
                 {g.awaySpread !== "N/A" && g.homeSpread !== "N/A" ? (g.awaySpread < g.homeSpread ? `${g.away} (${g.awaySpread}) vs ${g.home}` : `${g.away} vs ${g.home} (${g.homeSpread})`) : "Spreads unavailable"}
               </div>
