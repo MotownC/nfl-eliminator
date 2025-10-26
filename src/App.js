@@ -119,6 +119,7 @@ function LoginPage({ onLogin }) {
 }
 
 function MainApp({ userName }) {
+  console.log("MainApp loaded for user:", userName);
   const [games, setGames] = useState([]);
   const [week, setWeek] = useState(null);
   const [allPicks, setAllPicks] = useState({});
