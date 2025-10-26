@@ -1,6 +1,4 @@
-// Updated: October 26, 2025
-
-// Updated: October 22, 2025 - Streak fix v2
+// Updated: October 26, 2025 - Automatic Firebase updates with 5-minute polling
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
@@ -37,7 +35,6 @@ const getTeamNickname = (fullName) => {
   return parts[parts.length - 1];
 };
 
-// Map team names to ESPN abbreviations for logos
 const getTeamAbbr = (teamName) => {
   const abbrs = {
     'Cardinals': 'ARI', 'Falcons': 'ATL', 'Ravens': 'BAL', 'Bills': 'BUF',
@@ -69,9 +66,8 @@ const findMatchingOdds = (game, oddsData) => {
   });
 };
 
-// Approved usernames - only these people can log in
 const APPROVED_USERS = [
-  'Beth', 'Craig', 'Jennifer', 'Sally', 'Curt', 'Keith', 
+  'Beth', 'Craig', 'Jennifer', 'Sally', 'Curt', 'Keith',
   'Riley', 'Seth', 'Libby', 'Kyle', 'Wendi', 'Will', 'Andrea'
 ];
 
@@ -86,17 +82,16 @@ function LoginPage({ onLogin }) {
       setError("Please enter your name");
       return;
     }
-    
-    // Check if user is in approved list (case-insensitive)
+
     const approvedUser = APPROVED_USERS.find(
       user => user.toLowerCase() === trimmedName.toLowerCase()
     );
-    
+
     if (!approvedUser) {
       setError("Name not recognized. Please check your spelling or contact the pool administrator.");
       return;
     }
-    
+
     sessionStorage.setItem("nflEliminatorUser", approvedUser);
     onLogin(approvedUser);
   };
@@ -119,7 +114,6 @@ function LoginPage({ onLogin }) {
 }
 
 function MainApp({ userName }) {
-  console.log("MainApp loaded for user:", userName);
   const [games, setGames] = useState([]);
   const [week, setWeek] = useState(null);
   const [allPicks, setAllPicks] = useState({});
@@ -131,6 +125,7 @@ function MainApp({ userName }) {
   const [successMessage, setSuccessMessage] = useState("");
   const listenersRef = useRef({});
   const summaryRef = useRef(null);
+  const prevGamesRef = useRef([]); // Store previous games state
 
   const calculateStreak = (user) => {
     const weeks = Object.keys(weeklyPicks).sort((a, b) => Number(b) - Number(a));
@@ -156,77 +151,80 @@ function MainApp({ userName }) {
     return `${streakType === 'won' ? 'Won' : 'Lost'} ${streak}`;
   };
 
-  // Auto-update pick results based on ESPN game outcomes
-  const updatePickResults = async (currentWeek, parsedGames) => {
+  const retryFirebaseWrite = async (ref, data, maxAttempts = 3, delay = 1000) => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await set(ref, data);
+        return true;
+      } catch (err) {
+        if (attempt === maxAttempts) throw err;
+        console.warn(`Firebase write attempt ${attempt} failed, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
+      }
+    }
+  };
+
+  const updatePickResults = async (currentWeek, parsedGames, completedGameIds = []) => {
     console.log("=== AUTO-UPDATE FUNCTION CALLED ===");
     console.log("Current week:", currentWeek);
-    console.log("Games count:", parsedGames.length);
-    console.log("DB exists:", !!db);
-    
+    console.log("Completed game IDs:", completedGameIds);
+
     if (!db) {
       console.log("No database connection, skipping auto-update");
       return;
     }
-    
+
     try {
-      console.log("=== Checking for pick results to update ===");
       const weekRef = ref(db, `weeks/${currentWeek}`);
       const snapshot = await new Promise((resolve, reject) => {
         onValue(weekRef, resolve, reject, { onlyOnce: true });
       });
-      
+
       const picks = snapshot.val() || {};
       console.log(`Found ${Object.keys(picks).length} picks for week ${currentWeek}`);
-      
-      // Check each player's pick
-      for (const [playerName, pickData] of Object.entries(picks)) {
-        console.log(`Checking ${playerName}: pick=${pickData.pick}, result=${pickData.result}`);
-        
-        // Skip if already resolved (not pending)
-        if (pickData.result !== "Pending") {
-          console.log(`  Skipping ${playerName} - already resolved`);
+
+      const gamesToProcess = completedGameIds.length > 0
+        ? parsedGames.filter(g => completedGameIds.includes(g.id))
+        : parsedGames;
+
+      for (const game of gamesToProcess) {
+        if (game.homeWinner === null && game.awayWinner === null) {
+          console.log(`Game ${game.id} (${game.away} vs ${game.home}) not final, skipping`);
           continue;
         }
-        
-        const pickTeam = pickData.pick;
-        
-        // Find the game for this pick
-        const game = parsedGames.find(g => {
-          const homeNickname = getTeamNickname(g.home);
-          const awayNickname = getTeamNickname(g.away);
-          const pickNickname = getTeamNickname(pickTeam);
-          return homeNickname === pickNickname || awayNickname === pickNickname || 
-                 g.home === pickTeam || g.away === pickTeam;
-        });
-        
-        if (!game) {
-          console.log(`  No game found for ${playerName}'s pick: ${pickTeam}`);
-          continue;
-        }
-        
-        console.log(`  Found game: ${game.away} vs ${game.home}`);
-        
-        // Determine if their pick won
-        const isHome = game.home === pickTeam || getTeamNickname(game.home) === getTeamNickname(pickTeam);
-        const winner = isHome ? game.homeWinner : game.awayWinner;
-        
-        console.log(`  ${playerName} picked ${isHome ? 'home' : 'away'}, winner status: ${winner}`);
-        
-        // If game is final (winner is determined), update result
-        if (winner !== null && winner !== undefined) {
+
+        console.log(`Processing completed game: ${game.away} vs ${game.home}`);
+
+        for (const [playerName, pickData] of Object.entries(picks)) {
+          if (pickData.result !== "Pending") {
+            console.log(`  Skipping ${playerName} - already resolved`);
+            continue;
+          }
+
+          const pickTeam = pickData.pick;
+          const isHome = game.home === pickTeam || getTeamNickname(game.home) === getTeamNickname(pickTeam);
+          const isAway = game.away === pickTeam || getTeamNickname(game.away) === getTeamNickname(pickTeam);
+
+          if (!isHome && !isAway) {
+            console.log(`  ${playerName}'s pick (${pickTeam}) not in game ${game.id}`);
+            continue;
+          }
+
+          const winner = isHome ? game.homeWinner : game.awayWinner;
+          console.log(`  ${playerName} picked ${isHome ? 'home' : 'away'}, winner status: ${winner}`);
+
           const playerRef = ref(db, `weeks/${currentWeek}/${playerName}`);
-          await set(playerRef, {
+          await retryFirebaseWrite(playerRef, {
             ...pickData,
             result: winner
           });
           console.log(`✅ Updated ${playerName}'s pick: ${pickTeam} = ${winner ? 'Won' : 'Lost'}`);
-        } else {
-          console.log(`  Game not final yet for ${playerName}`);
         }
       }
-      console.log("=== Finished checking pick results ===");
+      console.log("=== Finished updating pick results ===");
     } catch (err) {
       console.error("Error updating pick results:", err);
+      setError("Failed to update game results. Please try refreshing.");
     }
   };
 
@@ -240,7 +238,8 @@ function MainApp({ userName }) {
       const currentWeek = espnData.week?.number || 1;
       console.log("ESPN API says current week is:", currentWeek);
       setWeek(currentWeek);
-      let parsedGames = espnData.events.map(ev => {
+
+      const parsedGames = espnData.events.map(ev => {
         const comps = ev.competitions[0]?.competitors || [];
         const homeComp = comps.find(c => c.homeAway === "home");
         const awayComp = comps.find(c => c.homeAway === "away");
@@ -255,6 +254,21 @@ function MainApp({ userName }) {
           awaySpread: "N/A"
         };
       });
+
+      const completedGames = parsedGames.filter(g => {
+        const prevGame = prevGamesRef.current.find(pg => pg.id === g.id);
+        return (
+          prevGame &&
+          ((prevGame.homeWinner === null && g.homeWinner !== null) ||
+           (prevGame.awayWinner === null && g.awayWinner !== null))
+        );
+      });
+
+      if (completedGames.length > 0) {
+        console.log("Detected completed games:", completedGames);
+        await updatePickResults(currentWeek, parsedGames, completedGames.map(g => g.id));
+      }
+
       let oddsData = [];
       const now = Date.now();
       const cachedOdds = sessionStorage.getItem("cachedOdds");
@@ -287,7 +301,8 @@ function MainApp({ userName }) {
           }
         }
       }
-      parsedGames = parsedGames.map(g => {
+
+      const updatedGames = parsedGames.map(g => {
         const oddsMatch = findMatchingOdds(g, oddsData);
         const outcomes = oddsMatch?.bookmakers?.[0]?.markets?.[0]?.outcomes || [];
         const homeOutcome = outcomes.find(o => normalizeTeamName(o.name) === normalizeTeamName(g.home));
@@ -296,10 +311,11 @@ function MainApp({ userName }) {
         if (homeOutcome?.point !== undefined) homeSpread = homeOutcome.point;
         if (awayOutcome?.point !== undefined) awaySpread = awayOutcome.point;
         return { ...g, homeSpread, awaySpread };
-      });
-      parsedGames.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
-      setGames(parsedGames);
-      if (db) setupFirebaseListeners(currentWeek, parsedGames, userName);
+      }).sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+
+      setGames(updatedGames);
+      prevGamesRef.current = parsedGames;
+      if (db) setupFirebaseListeners(currentWeek, updatedGames, userName);
       setLoading(false);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -311,6 +327,7 @@ function MainApp({ userName }) {
   const setupFirebaseListeners = (currentWeek, parsedGames, user) => {
     Object.values(listenersRef.current).forEach(unsubscribe => unsubscribe?.());
     listenersRef.current = {};
+
     const weekRef = ref(db, `weeks/${currentWeek}`);
     const unsubWeek = onValue(weekRef, snapshot => {
       const picks = snapshot.val() || {};
@@ -325,8 +342,12 @@ function MainApp({ userName }) {
           else setUserStatus(winner ? "Alive" : "Eliminated");
         }
       }
-    }, err => console.error("Week listener error:", err));
+    }, err => {
+      console.error("Week listener error:", err);
+      setError("Failed to sync with Firebase. Please refresh.");
+    });
     listenersRef.current.week = unsubWeek;
+
     const allWeeksRef = ref(db, "weeks");
     const unsubAllWeeks = onValue(allWeeksRef, snapshot => {
       const allWeeks = snapshot.val() || {};
@@ -340,17 +361,29 @@ function MainApp({ userName }) {
         });
       });
       setSeasonStandings(standings);
-    }, err => console.error("Weekly picks listener error:", err));
+    }, err => {
+      console.error("Weekly picks listener error:", err);
+      setError("Failed to sync standings. Please refresh.");
+    });
     listenersRef.current.allWeeks = unsubAllWeeks;
   };
 
   useEffect(() => {
     fetchGames();
-    const interval = setInterval(fetchGames, 90 * 1000);
+    const interval = setInterval(fetchGames, 300 * 1000); // 5 minutes
     return () => {
       clearInterval(interval);
       Object.values(listenersRef.current).forEach(unsubscribe => unsubscribe?.());
     };
+    // Optional: Use lodash.throttle for added safety
+    // import { throttle } from 'lodash';
+    // const throttledFetchGames = throttle(fetchGames, 300 * 1000, { leading: true });
+    // throttledFetchGames();
+    // const interval = setInterval(throttledFetchGames, 300 * 1000);
+    // return () => {
+    //   clearInterval(interval);
+    //   Object.values(listenersRef.current).forEach(unsubscribe => unsubscribe?.());
+    // };
   }, []);
 
   const getUserStatusColor = () => {
@@ -364,7 +397,7 @@ function MainApp({ userName }) {
     if (allPicks[userName]?.pick) { setError("You've already made your pick for this week. Picks cannot be changed."); return; }
     try {
       const weekRef = ref(db, `weeks/${week}/${userName}`);
-      await set(weekRef, { pick: team, result: "Pending", timestamp: new Date().toISOString() });
+      await retryFirebaseWrite(weekRef, { pick: team, result: "Pending", timestamp: new Date().toISOString() });
       setSuccessMessage(`✅ Your pick for Week ${week}: ${team}`);
       setError(null);
       setTimeout(() => { summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 500);
