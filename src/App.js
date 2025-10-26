@@ -1,5 +1,6 @@
 // Updated: October 25, 2025
 
+// Updated: October 22, 2025 - Streak fix v2
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
@@ -266,6 +267,53 @@ function MainApp({ userName }) {
       setSeasonStandings(standings);
     }, err => console.error("Weekly picks listener error:", err));
     listenersRef.current.allWeeks = unsubAllWeeks;
+  };
+
+  // Auto-update pick results based on ESPN game outcomes
+  const updatePickResults = async (currentWeek, parsedGames) => {
+    try {
+      const weekRef = ref(db, `weeks/${currentWeek}`);
+      const snapshot = await new Promise((resolve, reject) => {
+        onValue(weekRef, resolve, reject, { onlyOnce: true });
+      });
+      
+      const picks = snapshot.val() || {};
+      
+      // Check each player's pick
+      for (const [playerName, pickData] of Object.entries(picks)) {
+        // Skip if already resolved (not pending)
+        if (pickData.result !== "Pending") continue;
+        
+        const pickTeam = pickData.pick;
+        
+        // Find the game for this pick
+        const game = parsedGames.find(g => {
+          const homeNickname = getTeamNickname(g.home);
+          const awayNickname = getTeamNickname(g.away);
+          const pickNickname = getTeamNickname(pickTeam);
+          return homeNickname === pickNickname || awayNickname === pickNickname || 
+                 g.home === pickTeam || g.away === pickTeam;
+        });
+        
+        if (!game) continue;
+        
+        // Determine if their pick won
+        const isHome = game.home === pickTeam || getTeamNickname(game.home) === getTeamNickname(pickTeam);
+        const winner = isHome ? game.homeWinner : game.awayWinner;
+        
+        // If game is final (winner is determined), update result
+        if (winner !== null && winner !== undefined) {
+          const playerRef = ref(db, `weeks/${currentWeek}/${playerName}`);
+          await set(playerRef, {
+            ...pickData,
+            result: winner
+          });
+          console.log(`Updated ${playerName}'s pick: ${pickTeam} = ${winner ? 'Won' : 'Lost'}`);
+        }
+      }
+    } catch (err) {
+      console.error("Error updating pick results:", err);
+    }
   };
 
   useEffect(() => {
