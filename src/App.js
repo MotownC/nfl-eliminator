@@ -1,4 +1,4 @@
-// Updated: October 26, 2025 - Automatic Firebase updates with 5-minute polling
+// Updated: October 26, 2025 - Automatic Firebase updates for all completed games
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
@@ -183,16 +183,14 @@ function MainApp({ userName }) {
       const picks = snapshot.val() || {};
       console.log(`Found ${Object.keys(picks).length} picks for week ${currentWeek}`);
 
+      // If no specific completed IDs provided, process ALL currently completed games
       const gamesToProcess = completedGameIds.length > 0
         ? parsedGames.filter(g => completedGameIds.includes(g.id))
-        : parsedGames;
+        : parsedGames.filter(g => g.homeWinner !== null || g.awayWinner !== null);
+
+      console.log(`Processing ${gamesToProcess.length} completed game(s)`);
 
       for (const game of gamesToProcess) {
-        if (game.homeWinner === null && game.awayWinner === null) {
-          console.log(`Game ${game.id} (${game.away} vs ${game.home}) not final, skipping`);
-          continue;
-        }
-
         console.log(`Processing completed game: ${game.away} vs ${game.home}`);
 
         for (const [playerName, pickData] of Object.entries(picks)) {
@@ -255,6 +253,7 @@ function MainApp({ userName }) {
         };
       });
 
+      // Detect newly completed games for logging
       const completedGames = parsedGames.filter(g => {
         const prevGame = prevGamesRef.current.find(pg => pg.id === g.id);
         return (
@@ -265,9 +264,11 @@ function MainApp({ userName }) {
       });
 
       if (completedGames.length > 0) {
-        console.log("Detected completed games:", completedGames);
-        await updatePickResults(currentWeek, parsedGames, completedGames.map(g => g.id));
+        console.log("Detected newly completed games:", completedGames);
       }
+
+      // Always update results for all completed games (new or existing)
+      await updatePickResults(currentWeek, parsedGames);
 
       let oddsData = [];
       const now = Date.now();
@@ -355,7 +356,7 @@ function MainApp({ userName }) {
       const standings = {};
       Object.values(allWeeks).forEach(week => {
         Object.entries(week).forEach(([playerName, pickData]) => {
-          if (!standings[playerName]) standings[playerName] = { seasonPoints: 0, eliminatorActive: true };
+          if (!standings[playerName]) standings[playerName] = { seasonPoints: 0, eliminatoryActive: true };
           if (pickData.result === true) standings[playerName].seasonPoints += 1;
           else if (pickData.result === false) standings[playerName].eliminatorActive = false;
         });
@@ -375,15 +376,6 @@ function MainApp({ userName }) {
       clearInterval(interval);
       Object.values(listenersRef.current).forEach(unsubscribe => unsubscribe?.());
     };
-    // Optional: Use lodash.throttle for added safety
-    // import { throttle } from 'lodash';
-    // const throttledFetchGames = throttle(fetchGames, 300 * 1000, { leading: true });
-    // throttledFetchGames();
-    // const interval = setInterval(throttledFetchGames, 300 * 1000);
-    // return () => {
-    //   clearInterval(interval);
-    //   Object.values(listenersRef.current).forEach(unsubscribe => unsubscribe?.());
-    // };
   }, []);
 
   const getUserStatusColor = () => {
@@ -422,6 +414,9 @@ function MainApp({ userName }) {
       <h3>Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
       {successMessage && <div style={{ color: "green", backgroundColor: "#d4edda", border: "1px solid #c3e6cb", padding: 12, borderRadius: 4, marginBottom: 15, fontWeight: "bold" }}>{successMessage}</div>}
       {error && <div style={{ color: "#721c24", backgroundColor: "#f8d7da", border: "1px solid #f5c6cb", padding: 12, borderRadius: 4, marginBottom: 15 }}>{error}</div>}
+      <button onClick={fetchGames} disabled={loading} style={{ padding: "8px 16px", marginBottom: 20, backgroundColor: "#1E90FF", color: "white", border: "none", borderRadius: 4, cursor: loading ? "not-allowed" : "pointer" }}>
+        {loading ? "Refreshing..." : "Refresh Now"}
+      </button>
       <div>
         <h3>This Week's Games</h3>
         {games.length === 0 ? <p>No games available</p> : games.map(g => {
