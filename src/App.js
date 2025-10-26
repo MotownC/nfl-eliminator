@@ -1,4 +1,4 @@
-// Updated: October 26, 2025 - Automatic Firebase updates for all completed games
+// Updated: October 26, 2025 - Fixed eliminatorActive status and automatic updates
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
@@ -125,7 +125,7 @@ function MainApp({ userName }) {
   const [successMessage, setSuccessMessage] = useState("");
   const listenersRef = useRef({});
   const summaryRef = useRef(null);
-  const prevGamesRef = useRef([]); // Store previous games state
+  const prevGamesRef = useRef([]);
 
   const calculateStreak = (user) => {
     const weeks = Object.keys(weeklyPicks).sort((a, b) => Number(b) - Number(a));
@@ -183,7 +183,6 @@ function MainApp({ userName }) {
       const picks = snapshot.val() || {};
       console.log(`Found ${Object.keys(picks).length} picks for week ${currentWeek}`);
 
-      // If no specific completed IDs provided, process ALL currently completed games
       const gamesToProcess = completedGameIds.length > 0
         ? parsedGames.filter(g => completedGameIds.includes(g.id))
         : parsedGames.filter(g => g.homeWinner !== null || g.awayWinner !== null);
@@ -200,16 +199,17 @@ function MainApp({ userName }) {
           }
 
           const pickTeam = pickData.pick;
-          const isHome = game.home === pickTeam || getTeamNickname(game.home) === getTeamNickname(pickTeam);
-          const isAway = game.away === pickTeam || getTeamNickname(game.away) === getTeamNickname(pickTeam);
+          // Stricter team matching: check both full name and nickname
+          const isHome = game.home === pickTeam || normalizeTeamName(game.home) === normalizeTeamName(pickTeam) || getTeamNickname(game.home) === getTeamNickname(pickTeam);
+          const isAway = game.away === pickTeam || normalizeTeamName(game.away) === normalizeTeamName(pickTeam) || getTeamNickname(game.away) === getTeamNickname(pickTeam);
 
           if (!isHome && !isAway) {
-            console.log(`  ${playerName}'s pick (${pickTeam}) not in game ${game.id}`);
+            console.log(`  ${playerName}'s pick (${pickTeam}) not in game ${game.id} (home: ${game.home}, away: ${game.away})`);
             continue;
           }
 
           const winner = isHome ? game.homeWinner : game.awayWinner;
-          console.log(`  ${playerName} picked ${isHome ? 'home' : 'away'}, winner status: ${winner}`);
+          console.log(`  ${playerName} picked ${isHome ? 'home' : 'away'} (${pickTeam}), winner status: ${winner}`);
 
           const playerRef = ref(db, `weeks/${currentWeek}/${playerName}`);
           await retryFirebaseWrite(playerRef, {
@@ -253,7 +253,6 @@ function MainApp({ userName }) {
         };
       });
 
-      // Detect newly completed games for logging
       const completedGames = parsedGames.filter(g => {
         const prevGame = prevGamesRef.current.find(pg => pg.id === g.id);
         return (
@@ -267,7 +266,6 @@ function MainApp({ userName }) {
         console.log("Detected newly completed games:", completedGames);
       }
 
-      // Always update results for all completed games (new or existing)
       await updatePickResults(currentWeek, parsedGames);
 
       let oddsData = [];
@@ -318,6 +316,8 @@ function MainApp({ userName }) {
       prevGamesRef.current = parsedGames;
       if (db) setupFirebaseListeners(currentWeek, updatedGames, userName);
       setLoading(false);
+      setSuccessMessage("Game data refreshed successfully");
+      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error("Fetch error:", err);
       setError(err.message || "Failed to load games");
@@ -335,12 +335,22 @@ function MainApp({ userName }) {
       setAllPicks(picks);
       if (picks[user]) {
         const pickTeam = picks[user].pick;
-        const game = parsedGames.find(g => g.home === pickTeam || g.away === pickTeam);
+        const game = parsedGames.find(g =>
+          g.home === pickTeam ||
+          g.away === pickTeam ||
+          normalizeTeamName(g.home) === normalizeTeamName(pickTeam) ||
+          normalizeTeamName(g.away) === normalizeTeamName(pickTeam) ||
+          getTeamNickname(g.home) === getTeamNickname(pickTeam) ||
+          getTeamNickname(g.away) === getTeamNickname(pickTeam)
+        );
         if (game) {
-          const isHome = game.home === pickTeam;
+          const isHome = game.home === pickTeam || normalizeTeamName(game.home) === normalizeTeamName(pickTeam) || getTeamNickname(game.home) === getTeamNickname(pickTeam);
           const winner = isHome ? game.homeWinner : game.awayWinner;
           if (winner === null || winner === undefined) setUserStatus("Pending");
           else setUserStatus(winner ? "Alive" : "Eliminated");
+        } else {
+          console.log(`No game found for ${user}'s pick: ${pickTeam}`);
+          setUserStatus("Pending");
         }
       }
     }, err => {
@@ -354,14 +364,28 @@ function MainApp({ userName }) {
       const allWeeks = snapshot.val() || {};
       setWeeklyPicks(allWeeks);
       const standings = {};
-      Object.values(allWeeks).forEach(week => {
-        Object.entries(week).forEach(([playerName, pickData]) => {
-          if (!standings[playerName]) standings[playerName] = { seasonPoints: 0, eliminatoryActive: true };
-          if (pickData.result === true) standings[playerName].seasonPoints += 1;
-          else if (pickData.result === false) standings[playerName].eliminatorActive = false;
+      // Initialize all approved users to ensure they appear in standings
+      APPROVED_USERS.forEach(playerName => {
+        standings[playerName] = { seasonPoints: 0, eliminatorActive: true };
+      });
+      // Process all weeks to calculate wins and eliminator status
+      Object.entries(allWeeks).forEach(([weekNum, weekData]) => {
+        Object.entries(weekData).forEach(([playerName, pickData]) => {
+          if (!standings[playerName]) {
+            standings[playerName] = { seasonPoints: 0, eliminatorActive: true };
+          }
+          console.log(`Week ${weekNum}, ${playerName}: Pick=${pickData.pick}, Result=${pickData.result}`);
+          if (pickData.result === true) {
+            standings[playerName].seasonPoints += 1;
+          } else if (pickData.result === false) {
+            standings[playerName].eliminatorActive = false;
+          }
         });
       });
+      console.log("Computed standings:", standings);
       setSeasonStandings(standings);
+      // Update userStatus based on eliminatorActive for consistency
+      setUserStatus(standings[user]?.eliminatorActive ? "Alive" : "Eliminated");
     }, err => {
       console.error("Weekly picks listener error:", err);
       setError("Failed to sync standings. Please refresh.");
