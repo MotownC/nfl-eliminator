@@ -1,6 +1,5 @@
-// Updated: October 25, 2025
+// Updated: October 26, 2025
 
-// Updated: October 22, 2025 - Streak fix v2
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
@@ -272,17 +271,24 @@ function MainApp({ userName }) {
   // Auto-update pick results based on ESPN game outcomes
   const updatePickResults = async (currentWeek, parsedGames) => {
     try {
+      console.log("=== Checking for pick results to update ===");
       const weekRef = ref(db, `weeks/${currentWeek}`);
       const snapshot = await new Promise((resolve, reject) => {
         onValue(weekRef, resolve, reject, { onlyOnce: true });
       });
       
       const picks = snapshot.val() || {};
+      console.log(`Found ${Object.keys(picks).length} picks for week ${currentWeek}`);
       
       // Check each player's pick
       for (const [playerName, pickData] of Object.entries(picks)) {
+        console.log(`Checking ${playerName}: pick=${pickData.pick}, result=${pickData.result}`);
+        
         // Skip if already resolved (not pending)
-        if (pickData.result !== "Pending") continue;
+        if (pickData.result !== "Pending") {
+          console.log(`  Skipping ${playerName} - already resolved`);
+          continue;
+        }
         
         const pickTeam = pickData.pick;
         
@@ -295,11 +301,18 @@ function MainApp({ userName }) {
                  g.home === pickTeam || g.away === pickTeam;
         });
         
-        if (!game) continue;
+        if (!game) {
+          console.log(`  No game found for ${playerName}'s pick: ${pickTeam}`);
+          continue;
+        }
+        
+        console.log(`  Found game: ${game.away} vs ${game.home}`);
         
         // Determine if their pick won
         const isHome = game.home === pickTeam || getTeamNickname(game.home) === getTeamNickname(pickTeam);
         const winner = isHome ? game.homeWinner : game.awayWinner;
+        
+        console.log(`  ${playerName} picked ${isHome ? 'home' : 'away'}, winner status: ${winner}`);
         
         // If game is final (winner is determined), update result
         if (winner !== null && winner !== undefined) {
@@ -308,9 +321,12 @@ function MainApp({ userName }) {
             ...pickData,
             result: winner
           });
-          console.log(`Updated ${playerName}'s pick: ${pickTeam} = ${winner ? 'Won' : 'Lost'}`);
+          console.log(`✅ Updated ${playerName}'s pick: ${pickTeam} = ${winner ? 'Won' : 'Lost'}`);
+        } else {
+          console.log(`  Game not final yet for ${playerName}`);
         }
       }
+      console.log("=== Finished checking pick results ===");
     } catch (err) {
       console.error("Error updating pick results:", err);
     }
