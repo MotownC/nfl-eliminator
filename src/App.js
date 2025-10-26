@@ -1,4 +1,4 @@
-// Updated: October 26, 2025 - Fixed eliminatorActive status and automatic updates
+// Updated: October 26, 2025 - Removed "Refresh Now" and "fixColtsWeek8Results" buttons, retained Colts matching fix
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
@@ -190,39 +190,68 @@ function MainApp({ userName }) {
       console.log(`Processing ${gamesToProcess.length} completed game(s)`);
 
       for (const game of gamesToProcess) {
-        console.log(`Processing completed game: ${game.away} vs ${game.home}`);
+        console.log(`Processing completed game: ${game.away} vs ${game.home}, HomeWinner: ${game.homeWinner}, AwayWinner: ${game.awayWinner}`);
+        
+        // Special handling for Colts to ensure correct matching
+        const coltsAliases = ["Indianapolis Colts", "Colts", "IND", "indianapolis colts", "colts", "ind"];
+        const isColtsGame = coltsAliases.includes(normalizeTeamName(game.home)) || coltsAliases.includes(normalizeTeamName(game.away));
+        if (isColtsGame) {
+          console.log(`Colts game detected: Home=${game.home}, Away=${game.away}, HomeWinner=${game.homeWinner}, AwayWinner=${game.awayWinner}`);
+        }
 
         for (const [playerName, pickData] of Object.entries(picks)) {
-          if (pickData.result !== "Pending") {
-            console.log(`  Skipping ${playerName} - already resolved`);
+          if (pickData.result !== "Pending" && pickData.result !== undefined && pickData.result !== null) {
+            console.log(`  Skipping ${playerName} - already resolved (Result: ${pickData.result})`);
             continue;
           }
 
-          const pickTeam = pickData.pick;
-          // Stricter team matching: check both full name and nickname
-          const isHome = game.home === pickTeam || normalizeTeamName(game.home) === normalizeTeamName(pickTeam) || getTeamNickname(game.home) === getTeamNickname(pickTeam);
-          const isAway = game.away === pickTeam || normalizeTeamName(game.away) === normalizeTeamName(pickTeam) || getTeamNickname(game.away) === getTeamNickname(pickTeam);
+          const pickTeam = pickData.pick ? normalizeTeamName(pickData.pick) : "";
+          if (!pickTeam) {
+            console.log(`  Skipping ${playerName} - no valid pick`);
+            continue;
+          }
+
+          // Enhanced team matching
+          const isHome = game.home === pickData.pick ||
+                         normalizeTeamName(game.home) === pickTeam ||
+                         getTeamNickname(game.home) === getTeamNickname(pickData.pick) ||
+                         (coltsAliases.includes(normalizeTeamName(game.home)) && coltsAliases.includes(pickTeam));
+          const isAway = game.away === pickData.pick ||
+                         normalizeTeamName(game.away) === pickTeam ||
+                         getTeamNickname(game.away) === getTeamNickname(pickData.pick) ||
+                         (coltsAliases.includes(normalizeTeamName(game.away)) && coltsAliases.includes(pickTeam));
 
           if (!isHome && !isAway) {
-            console.log(`  ${playerName}'s pick (${pickTeam}) not in game ${game.id} (home: ${game.home}, away: ${game.away})`);
+            console.log(`  ${playerName}'s pick (${pickData.pick}) not in game ${game.id} (home: ${game.home}, away: ${game.away})`);
             continue;
           }
 
           const winner = isHome ? game.homeWinner : game.awayWinner;
-          console.log(`  ${playerName} picked ${isHome ? 'home' : 'away'} (${pickTeam}), winner status: ${winner}`);
+          console.log(`  ${playerName} picked ${isHome ? 'home' : 'away'} (${pickData.pick}), winner status: ${winner}`);
+
+          // Validate winner status
+          if (winner === null || winner === undefined) {
+            console.warn(`  Warning: No winner determined for game ${game.id}, skipping update for ${playerName}`);
+            continue;
+          }
+
+          // Special logging for Colts picks
+          if (isColtsGame && (isHome || isAway)) {
+            console.log(`  Colts pick update for ${playerName}: Pick=${pickData.pick}, Result=${winner ? 'Won' : 'Lost'}`);
+          }
 
           const playerRef = ref(db, `weeks/${currentWeek}/${playerName}`);
           await retryFirebaseWrite(playerRef, {
             ...pickData,
             result: winner
           });
-          console.log(`✅ Updated ${playerName}'s pick: ${pickTeam} = ${winner ? 'Won' : 'Lost'}`);
+          console.log(`✅ Updated ${playerName}'s pick: ${pickData.pick} = ${winner ? 'Won' : 'Lost'}`);
         }
       }
       console.log("=== Finished updating pick results ===");
     } catch (err) {
       console.error("Error updating pick results:", err);
-      setError("Failed to update game results. Please try refreshing.");
+      setError("Failed to update game results. Please try again later.");
     }
   };
 
@@ -355,7 +384,7 @@ function MainApp({ userName }) {
       }
     }, err => {
       console.error("Week listener error:", err);
-      setError("Failed to sync with Firebase. Please refresh.");
+      setError("Failed to sync with Firebase. Please try again later.");
     });
     listenersRef.current.week = unsubWeek;
 
@@ -364,11 +393,9 @@ function MainApp({ userName }) {
       const allWeeks = snapshot.val() || {};
       setWeeklyPicks(allWeeks);
       const standings = {};
-      // Initialize all approved users to ensure they appear in standings
       APPROVED_USERS.forEach(playerName => {
         standings[playerName] = { seasonPoints: 0, eliminatorActive: true };
       });
-      // Process all weeks to calculate wins and eliminator status
       Object.entries(allWeeks).forEach(([weekNum, weekData]) => {
         Object.entries(weekData).forEach(([playerName, pickData]) => {
           if (!standings[playerName]) {
@@ -384,11 +411,10 @@ function MainApp({ userName }) {
       });
       console.log("Computed standings:", standings);
       setSeasonStandings(standings);
-      // Update userStatus based on eliminatorActive for consistency
       setUserStatus(standings[user]?.eliminatorActive ? "Alive" : "Eliminated");
     }, err => {
       console.error("Weekly picks listener error:", err);
-      setError("Failed to sync standings. Please refresh.");
+      setError("Failed to sync standings. Please try again later.");
     });
     listenersRef.current.allWeeks = unsubAllWeeks;
   };
@@ -438,9 +464,6 @@ function MainApp({ userName }) {
       <h3>Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
       {successMessage && <div style={{ color: "green", backgroundColor: "#d4edda", border: "1px solid #c3e6cb", padding: 12, borderRadius: 4, marginBottom: 15, fontWeight: "bold" }}>{successMessage}</div>}
       {error && <div style={{ color: "#721c24", backgroundColor: "#f8d7da", border: "1px solid #f5c6cb", padding: 12, borderRadius: 4, marginBottom: 15 }}>{error}</div>}
-      <button onClick={fetchGames} disabled={loading} style={{ padding: "8px 16px", marginBottom: 20, backgroundColor: "#1E90FF", color: "white", border: "none", borderRadius: 4, cursor: loading ? "not-allowed" : "pointer" }}>
-        {loading ? "Refreshing..." : "Refresh Now"}
-      </button>
       <div>
         <h3>This Week's Games</h3>
         {games.length === 0 ? <p>No games available</p> : games.map(g => {
@@ -534,7 +557,7 @@ function MainApp({ userName }) {
                     return (
                       <td key={wk} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}>
                         {getTeamNickname(pick)}
-                        {result === "Pending" ? null : result === true ? <span style={{ color: "green", marginLeft: 4, fontWeight: "bold" }}>✓</span> : <span style={{ color: "red", marginLeft: 4, fontWeight: "bold" }}>✗</span>}
+                        {result === "Pending" ? null : result === true ? <span style={{ color: "green", marginLeft: 4, fontWeight: "bold" }}>✓</span> : result === false ? <span style={{ color: "red", marginLeft: 4, fontWeight: "bold" }}>✗</span> : <span style={{ color: "#999", marginLeft: 4 }}>-</span>}
                       </td>
                     );
                   })}
