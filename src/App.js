@@ -88,7 +88,7 @@ function LoginPage({ onLogin }) {
     );
 
     if (!approvedUser) {
-      setError("Name not recognized. Please check your spelling or contact the pool administrator.");
+      setError("Name not recognized. Please check your spelling or contact Craig.");
       return;
     }
 
@@ -543,11 +543,11 @@ function MainApp({ userName }) {
             </tr>
           </thead>
           <tbody>
-            {Object.keys(seasonStandings).map(user => {
+            {Object.keys(seasonStandings).sort((a, b) => a.localeCompare(b)).map(user => {
               const currentUserHasPicked = weeklyPicks[week]?.[userName]?.pick;
               return (
                 <tr key={user}>
-                  <td style={{ border: "1px solid #ccc", padding: 6, fontWeight: "bold" }}>{user}</td>
+                  <td style={{ border: "1px redact:1px solid #ccc", padding: 6, fontWeight: "bold" }}>{user}</td>
                   {Object.keys(weeklyPicks).sort((a, b) => Number(a) - Number(b)).map(wk => {
                     const pick = weeklyPicks[wk]?.[user]?.pick;
                     const result = weeklyPicks[wk]?.[user]?.result;
