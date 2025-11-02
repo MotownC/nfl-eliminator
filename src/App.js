@@ -556,7 +556,7 @@ function MainApp({ userName }) {
               const currentUserHasPicked = weeklyPicks[week]?.[userName]?.pick;
               return (
                 <tr key={user}>
-                  <td style={{ border: "1px redact:1px solid #ccc", padding: 6, fontWeight: "bold" }}>{user}</td>
+                  <td style={{ border: "1px solid #ccc", padding: 6, fontWeight: "bold" }}>{user}</td>
                   {Object.keys(weeklyPicks).sort((a, b) => Number(a) - Number(b)).map(wk => {
                     const pick = weeklyPicks[wk]?.[user]?.pick;
                     const result = weeklyPicks[wk]?.[user]?.result;
