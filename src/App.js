@@ -482,7 +482,16 @@ function MainApp({ userName }) {
           const hasPickedThisWeek = !!userPickThisWeek;
           return (
             <div key={g.id} style={{ marginBottom: 15, border: "1px solid #ccc", padding: 12, borderRadius: 6, backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9" }}>
-              <div>{gameDate.toLocaleString()}</div>
+              <div style={{ fontSize: "0.9em", color: "#666" }}>
+                {gameDate.toLocaleString('en-US', { 
+                  weekday: 'short',
+                  month: 'short', 
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  timeZoneName: 'short'
+                })}
+              </div>
               <div style={{ margin: "10px 0", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
                 <img src={getTeamLogo(g.away)} alt={g.away} style={{ width: 30, height: 30 }} onError={(e) => e.target.style.display = 'none'} />
                 <span>{g.away}</span>
