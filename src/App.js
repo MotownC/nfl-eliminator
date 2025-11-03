@@ -529,15 +529,15 @@ function MainApp({ userName }) {
                 )}
               </div>
 
-              {/* ----- ONE-LINE GAME + SCORES ----- */}
+              {/* ----- TWO-LINE GAME DISPLAY ----- */}
+              {/* Away line */}
               <div
                 style={{
-                  margin: "8px 0",
-                  fontWeight: "bold",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
-                  flexWrap: "wrap",
+                  marginBottom: 6,
+                  fontWeight: "bold",
                 }}
               >
                 <img
@@ -546,9 +546,8 @@ function MainApp({ userName }) {
                   style={{ width: 28, height: 28 }}
                   onError={(e) => (e.target.style.display = "none")}
                 />
-                <span style={{ minWidth: 140 }}>{g.away}</span>
+                <span style={{ flex: 1, minWidth: 140 }}>{g.away}</span>
 
-                {/* Away score (plain text) */}
                 {g.isFinal ? (
                   <span
                     style={{
@@ -562,18 +561,25 @@ function MainApp({ userName }) {
                 ) : (
                   <span style={{ color: "#ccc", minWidth: 30, textAlign: "right" }}>-</span>
                 )}
+              </div>
 
-                <span style={{ margin: "0 6px", color: "#888" }}>vs</span>
-
+              {/* Home line */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontWeight: "bold",
+                }}
+              >
                 <img
                   src={getTeamLogo(g.home)}
                   alt={g.home}
                   style={{ width: 28, height: 28 }}
                   onError={(e) => (e.target.style.display = "none")}
                 />
-                <span style={{ minWidth: 140 }}>{g.home}</span>
+                <span style={{ flex: 1, minWidth: 140 }}>{g.home}</span>
 
-                {/* Home score (plain text) */}
                 {g.isFinal ? (
                   <span
                     style={{
@@ -590,9 +596,9 @@ function MainApp({ userName }) {
               </div>
 
               {/* ----- SPREAD ----- */}
-              <div style={{ fontSize: "0.85em", color: "#666", marginBottom: 8 }}>
+              <div style={{ fontSize: "0.85em", color: "#666", margin: "8px 0" }}>
                 {g.awaySpread !== "N/A" && g.homeSpread !== "N/A"
-                  ? `${g.away} (${g.awaySpread}) vs ${g.home} (${g.homeSpread})`
+                  ? `${g.away} (${g.awaySpread}) @ ${g.home} (${g.homeSpread})`
                   : "Spreads unavailable"}
               </div>
 
@@ -692,7 +698,6 @@ function MainApp({ userName }) {
                     }}
                     title="View ESPN recap"
                   >
-                    {/* Simple icon (you can replace with an SVG if you want) */}
                     <span style={{ marginRight: 4 }}>Recap</span>
                   </a>
                 )}
