@@ -1,4 +1,4 @@
-// Updated: October 26, 2025 - Removed "Refresh Now" and "fixColtsWeek8Results" buttons, retained Colts matching fix
+// Updated: November 03, 2025 - Added final scores + bold winner + FINAL badge
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
@@ -185,14 +185,13 @@ function MainApp({ userName }) {
 
       const gamesToProcess = completedGameIds.length > 0
         ? parsedGames.filter(g => completedGameIds.includes(g.id))
-        : parsedGames.filter(g => g.homeWinner !== null || g.awayWinner !== null);
+        : parsedGames.filter(g => g.isFinal);
 
       console.log(`Processing ${gamesToProcess.length} completed game(s)`);
 
       for (const game of gamesToProcess) {
         console.log(`Processing completed game: ${game.away} vs ${game.home}, HomeWinner: ${game.homeWinner}, AwayWinner: ${game.awayWinner}`);
         
-        // Special handling for Colts to ensure correct matching
         const coltsAliases = ["Indianapolis Colts", "Colts", "IND", "indianapolis colts", "colts", "ind"];
         const isColtsGame = coltsAliases.includes(normalizeTeamName(game.home)) || coltsAliases.includes(normalizeTeamName(game.away));
         if (isColtsGame) {
@@ -211,7 +210,6 @@ function MainApp({ userName }) {
             continue;
           }
 
-          // Enhanced team matching
           const isHome = game.home === pickData.pick ||
                          normalizeTeamName(game.home) === pickTeam ||
                          getTeamNickname(game.home) === getTeamNickname(pickData.pick) ||
@@ -229,13 +227,11 @@ function MainApp({ userName }) {
           const winner = isHome ? game.homeWinner : game.awayWinner;
           console.log(`  ${playerName} picked ${isHome ? 'home' : 'away'} (${pickData.pick}), winner status: ${winner}`);
 
-          // Validate winner status
           if (winner === null || winner === undefined) {
             console.warn(`  Warning: No winner determined for game ${game.id}, skipping update for ${playerName}`);
             continue;
           }
 
-          // Special logging for Colts picks
           if (isColtsGame && (isHome || isAway)) {
             console.log(`  Colts pick update for ${playerName}: Pick=${pickData.pick}, Result=${winner ? 'Won' : 'Lost'}`);
           }
@@ -245,7 +241,7 @@ function MainApp({ userName }) {
             ...pickData,
             result: winner
           });
-          console.log(`✅ Updated ${playerName}'s pick: ${pickData.pick} = ${winner ? 'Won' : 'Lost'}`);
+          console.log(`Updated ${playerName}'s pick: ${pickData.pick} = ${winner ? 'Won' : 'Lost'}`);
         }
       }
       console.log("=== Finished updating pick results ===");
@@ -270,13 +266,21 @@ function MainApp({ userName }) {
         const comps = ev.competitions[0]?.competitors || [];
         const homeComp = comps.find(c => c.homeAway === "home");
         const awayComp = comps.find(c => c.homeAway === "away");
+
+        const homeScore = homeComp?.score ? parseInt(homeComp.score, 10) : null;
+        const awayScore = awayComp?.score ? parseInt(awayComp.score, 10) : null;
+        const isFinal = ev.status?.type?.completed === true;
+
         return {
           id: ev.id,
           kickoff: ev.date,
           home: homeComp?.team?.displayName || "Unknown",
           away: awayComp?.team?.displayName || "Unknown",
-          homeWinner: homeComp?.winner === true ? true : homeComp?.winner === false ? false : null,
-          awayWinner: awayComp?.winner === true ? true : awayComp?.winner === false ? false : null,
+          homeScore,
+          awayScore,
+          isFinal,
+          homeWinner: homeComp?.winner ?? null,
+          awayWinner: awayComp?.winner ?? null,
           homeSpread: "N/A",
           awaySpread: "N/A"
         };
@@ -286,8 +290,7 @@ function MainApp({ userName }) {
         const prevGame = prevGamesRef.current.find(pg => pg.id === g.id);
         return (
           prevGame &&
-          ((prevGame.homeWinner === null && g.homeWinner !== null) ||
-           (prevGame.awayWinner === null && g.awayWinner !== null))
+          ((prevGame.isFinal === false && g.isFinal === true))
         );
       });
 
@@ -401,7 +404,6 @@ function MainApp({ userName }) {
           if (!standings[playerName]) {
             standings[playerName] = { seasonPoints: 0, eliminatorActive: true };
           }
-          console.log(`Week ${weekNum}, ${playerName}: Pick=${pickData.pick}, Result=${pickData.result}`);
           if (pickData.result === true) {
             standings[playerName].seasonPoints += 1;
           } else if (pickData.result === false) {
@@ -409,7 +411,6 @@ function MainApp({ userName }) {
           }
         });
       });
-      console.log("Computed standings:", standings);
       setSeasonStandings(standings);
       setUserStatus(standings[user]?.eliminatorActive ? "Alive" : "Eliminated");
     }, err => {
@@ -421,7 +422,7 @@ function MainApp({ userName }) {
 
   useEffect(() => {
     fetchGames();
-    const interval = setInterval(fetchGames, 300 * 1000); // 5 minutes
+    const interval = setInterval(fetchGames, 300 * 1000);
     return () => {
       clearInterval(interval);
       Object.values(listenersRef.current).forEach(unsubscribe => unsubscribe?.());
@@ -440,7 +441,7 @@ function MainApp({ userName }) {
     try {
       const weekRef = ref(db, `weeks/${week}/${userName}`);
       await retryFirebaseWrite(weekRef, { pick: team, result: "Pending", timestamp: new Date().toISOString() });
-      setSuccessMessage(`✅ Your pick for Week ${week}: ${team}`);
+      setSuccessMessage(`Your pick for Week ${week}: ${team}`);
       setError(null);
       setTimeout(() => { summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 500);
       setTimeout(() => { setSuccessMessage(""); }, 5000);
@@ -471,7 +472,6 @@ function MainApp({ userName }) {
           const gameDate = new Date(g.kickoff);
           const gameInPast = gameDate < now;
           const userPreviousPicks = Object.entries(weeklyPicks).filter(([wk, _]) => Number(wk) < week).map(([_, picks]) => picks[userName]?.pick).filter(Boolean);
-          console.log(`User ${userName} previous picks:`, userPreviousPicks);
           const awayNickname = getTeamNickname(g.away);
           const homeNickname = getTeamNickname(g.home);
           const awayAlreadyPickedByUser = userPreviousPicks.some(pick => getTeamNickname(pick) === awayNickname || pick === g.away);
@@ -481,39 +481,129 @@ function MainApp({ userName }) {
           const userPickedHome = userPickThisWeek === g.home || getTeamNickname(userPickThisWeek) === homeNickname;
           const hasPickedThisWeek = !!userPickThisWeek;
           return (
-            <div key={g.id} style={{ marginBottom: 15, border: "1px solid #ccc", padding: 12, borderRadius: 6, backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9" }}>
-              <div style={{ fontSize: "0.9em", color: "#666" }}>
-                {gameDate.toLocaleString('en-US', { 
-                  weekday: 'short',
-                  month: 'short', 
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  timeZoneName: 'short'
-                })}
+            <div key={g.id} style={{ 
+              marginBottom: 15, 
+              border: "1px solid #ccc", 
+              padding: 12, 
+              borderRadius: 6, 
+              backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9"
+            }}>
+              {/* Date/Time + FINAL Badge */}
+              <div style={{ 
+                fontSize: "0.9em", 
+                color: "#666", 
+                marginBottom: 6,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span>
+                  {gameDate.toLocaleString('en-US', { 
+                    weekday: 'short',
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    timeZoneName: 'short'
+                  })}
+                </span>
+                {g.isFinal && (
+                  <span style={{ 
+                    fontWeight: "bold", 
+                    fontSize: "0.8em", 
+                    color: "#333",
+                    backgroundColor: "#f0f0f0",
+                    padding: "2px 6px",
+                    borderRadius: 4,
+                    border: "1px solid #ddd"
+                  }}>
+                    FINAL
+                  </span>
+                )}
               </div>
-              <div style={{ margin: "10px 0", fontWeight: "bold", display: "flex", alignItems: "center", gap: "10px" }}>
-                <img src={getTeamLogo(g.away)} alt={g.away} style={{ width: 30, height: 30 }} onError={(e) => e.target.style.display = 'none'} />
-                <span>{g.away}</span>
-                <span style={{ margin: "0 5px" }}>vs</span>
-                <img src={getTeamLogo(g.home)} alt={g.home} style={{ width: 30, height: 30 }} onError={(e) => e.target.style.display = 'none'} />
-                <span>{g.home}</span>
+
+              {/* ONE-LINE GAME DISPLAY */}
+              <div style={{ 
+                margin: "8px 0", 
+                fontWeight: "bold", 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "8px",
+                flexWrap: "wrap"
+              }}>
+                <img src={getTeamLogo(g.away)} alt={g.away} style={{ width: 28, height: 28 }} onError={(e) => e.target.style.display = 'none'} />
+                <span style={{ minWidth: 140 }}>{g.away}</span>
+                
+                {g.isFinal ? (
+                  <span style={{ fontWeight: g.awayWinner ? "bold" : "normal", minWidth: 30, textAlign: "right" }}>
+                    {g.awayScore}
+                  </span>
+                ) : (
+                  <span style={{ color: "#ccc", minWidth: 30, textAlign: "right" }}>-</span>
+                )}
+
+                <span style={{ margin: "0 6px", color: "#888" }}>vs</span>
+
+                <img src={getTeamLogo(g.home)} alt={g.home} style={{ width: 28, height: 28 }} onError={(e) => e.target.style.display = 'none'} />
+                <span style={{ minWidth: 140 }}>{g.home}</span>
+                
+                {g.isFinal ? (
+                  <span style={{ fontWeight: g.homeWinner ? "bold" : "normal", minWidth: 30, textAlign: "right" }}>
+                    {g.homeScore}
+                  </span>
+                ) : (
+                  <span style={{ color: "#ccc", minWidth: 30, textAlign: "right" }}>-</span>
+                )}
               </div>
-              <div style={{ fontSize: "0.9em", color: "#666", marginBottom: 10 }}>
-                {g.awaySpread !== "N/A" && g.homeSpread !== "N/A" ? (g.awaySpread < g.homeSpread ? `${g.away} (${g.awaySpread}) vs ${g.home}` : `${g.away} vs ${g.home} (${g.homeSpread})`) : "Spreads unavailable"}
+
+              {/* Spread */}
+              <div style={{ fontSize: "0.85em", color: "#666", marginBottom: 8 }}>
+                {g.awaySpread !== "N/A" && g.homeSpread !== "N/A" 
+                  ? `${g.away} (${g.awaySpread}) vs ${g.home} (${g.homeSpread})`
+                  : "Spreads unavailable"}
               </div>
-              {awayAlreadyPickedByUser && <div style={{ fontSize: "0.85em", color: "#999", marginBottom: 5 }}>⚠️ You already picked {g.away}</div>}
-              {homeAlreadyPickedByUser && <div style={{ fontSize: "0.85em", color: "#999", marginBottom: 5 }}>⚠️ You already picked {g.home}</div>}
-              <button disabled={gameInPast || awayAlreadyPickedByUser || (hasPickedThisWeek && !userPickedAway)} style={{ marginRight: 10, padding: "6px 12px", backgroundColor: userPickedAway ? "#28a745" : (gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF", color: "white", border: "none", borderRadius: 4, cursor: (gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer", opacity: awayAlreadyPickedByUser ? 0.5 : 1, fontWeight: userPickedAway ? "bold" : "normal" }} onClick={() => makePick(g.away)} title={awayAlreadyPickedByUser ? "You already picked this team" : hasPickedThisWeek ? "Pick locked in" : ""}>
-                {userPickedAway ? `✓ ${g.away}` : `Pick ${g.away}`}
-              </button>
-              <button disabled={gameInPast || homeAlreadyPickedByUser || (hasPickedThisWeek && !userPickedHome)} style={{ padding: "6px 12px", backgroundColor: userPickedHome ? "#28a745" : (gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF", color: "white", border: "none", borderRadius: 4, cursor: (gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer", opacity: homeAlreadyPickedByUser ? 0.5 : 1, fontWeight: userPickedHome ? "bold" : "normal" }} onClick={() => makePick(g.home)} title={homeAlreadyPickedByUser ? "You already picked this team" : hasPickedThisWeek ? "Pick locked in" : ""}>
-                {userPickedHome ? `✓ ${g.home}` : `Pick ${g.home}`}
-              </button>
+
+              {/* Warnings */}
+              {awayAlreadyPickedByUser && <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>You already picked {g.away}</div>}
+              {homeAlreadyPickedByUser && <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>You already picked {g.home}</div>}
+
+              {/* Pick Buttons */}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button 
+                  disabled={g.isFinal || gameInPast || awayAlreadyPickedByUser || (hasPickedThisWeek && !userPickedAway)}
+                  style={{ 
+                    flex: 1, padding: "6px 10px", 
+                    backgroundColor: userPickedAway ? "#1e7e34" : (g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF", 
+                    color: "white", border: "none", borderRadius: 4, 
+                    cursor: (g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer", 
+                    fontWeight: userPickedAway ? "bold" : "normal"
+                  }} 
+                  onClick={() => makePick(g.away)}
+                >
+                  {userPickedAway ? `Picked ${g.away}` : `Pick ${g.away}`}
+                </button>
+
+                <button 
+                  disabled={g.isFinal || gameInPast || homeAlreadyPickedByUser || (hasPickedThisWeek && !userPickedHome)}
+                  style={{ 
+                    flex: 1, padding: "6px 10px", 
+                    backgroundColor: userPickedHome ? "#1e7e34" : (g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF", 
+                    color: "white", border: "none", borderRadius: 4, 
+                    cursor: (g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer", 
+                    fontWeight: userPickedHome ? "bold" : "normal"
+                  }} 
+                  onClick={() => makePick(g.home)}
+                >
+                  {userPickedHome ? `Picked ${g.home}` : `Pick ${g.home}`}
+                </button>
+              </div>
             </div>
           );
         })}
       </div>
+
+      {/* Standings & Picks Summary */}
+      {/* ... (unchanged - same as your original) */}
       <h3>Season Standings</h3>
       {Object.keys(seasonStandings).length === 0 ? <p>No standings yet</p> : (
         <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: 30 }}>
@@ -588,7 +678,6 @@ function MainApp({ userName }) {
 function App({ userName: initialUserName = null }) {
   const [userName, setUserName] = useState(() => {
     const stored = sessionStorage.getItem("nflEliminatorUser");
-    console.log("Initial userName check:", { initialUserName, stored });
     return initialUserName || stored || null;
   });
   const handleLogout = () => {
