@@ -481,61 +481,82 @@ function MainApp({ userName }) {
           const userPickedHome = userPickThisWeek === g.home || getTeamNickname(userPickThisWeek) === homeNickname;
           const hasPickedThisWeek = !!userPickThisWeek;
           return (
-            <div key={g.id} style={{ 
-              marginBottom: 15, 
-              border: "1px solid #ccc", 
-              padding: 12, 
-              borderRadius: 6, 
-              backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9"
-            }}>
-              {/* Date/Time + FINAL Badge */}
-              <div style={{ 
-                fontSize: "0.9em", 
-                color: "#666", 
-                marginBottom: 6,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
+            <div
+              key={g.id}
+              style={{
+                marginBottom: 15,
+                border: "1px solid #ccc",
+                padding: 12,
+                borderRadius: 6,
+                backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9",
+              }}
+            >
+              {/* ----- DATE / FINAL BADGE ----- */}
+              <div
+                style={{
+                  fontSize: "0.9em",
+                  color: "#666",
+                  marginBottom: 6,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
                 <span>
-                  {gameDate.toLocaleString('en-US', { 
-                    weekday: 'short',
-                    month: 'short', 
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    timeZoneName: 'short'
+                  {gameDate.toLocaleString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    timeZoneName: "short",
                   })}
                 </span>
                 {g.isFinal && (
-                  <span style={{ 
-                    fontWeight: "bold", 
-                    fontSize: "0.8em", 
-                    color: "#333",
-                    backgroundColor: "#f0f0f0",
-                    padding: "2px 6px",
-                    borderRadius: 4,
-                    border: "1px solid #ddd"
-                  }}>
+                  <span
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: "0.8em",
+                      color: "#333",
+                      backgroundColor: "#f0f0f0",
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      border: "1px solid #ddd",
+                    }}
+                  >
                     FINAL
                   </span>
                 )}
               </div>
 
-              {/* ONE-LINE GAME DISPLAY */}
-              <div style={{ 
-                margin: "8px 0", 
-                fontWeight: "bold", 
-                display: "flex", 
-                alignItems: "center", 
-                gap: "8px",
-                flexWrap: "wrap"
-              }}>
-                <img src={getTeamLogo(g.away)} alt={g.away} style={{ width: 28, height: 28 }} onError={(e) => e.target.style.display = 'none'} />
+              {/* ----- ONE-LINE GAME + SCORES ----- */}
+              <div
+                style={{
+                  margin: "8px 0",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <img
+                  src={getTeamLogo(g.away)}
+                  alt={g.away}
+                  style={{ width: 28, height: 28 }}
+                  onError={(e) => (e.target.style.display = "none")}
+                />
                 <span style={{ minWidth: 140 }}>{g.away}</span>
-                
+
+                {/* Away score (plain text) */}
                 {g.isFinal ? (
-                  <span style={{ fontWeight: g.awayWinner ? "bold" : "normal", minWidth: 30, textAlign: "right" }}>
+                  <span
+                    style={{
+                      fontWeight: g.awayWinner ? "bold" : "normal",
+                      minWidth: 30,
+                      textAlign: "right",
+                    }}
+                  >
                     {g.awayScore}
                   </span>
                 ) : (
@@ -544,11 +565,23 @@ function MainApp({ userName }) {
 
                 <span style={{ margin: "0 6px", color: "#888" }}>vs</span>
 
-                <img src={getTeamLogo(g.home)} alt={g.home} style={{ width: 28, height: 28 }} onError={(e) => e.target.style.display = 'none'} />
+                <img
+                  src={getTeamLogo(g.home)}
+                  alt={g.home}
+                  style={{ width: 28, height: 28 }}
+                  onError={(e) => (e.target.style.display = "none")}
+                />
                 <span style={{ minWidth: 140 }}>{g.home}</span>
-                
+
+                {/* Home score (plain text) */}
                 {g.isFinal ? (
-                  <span style={{ fontWeight: g.homeWinner ? "bold" : "normal", minWidth: 30, textAlign: "right" }}>
+                  <span
+                    style={{
+                      fontWeight: g.homeWinner ? "bold" : "normal",
+                      minWidth: 30,
+                      textAlign: "right",
+                    }}
+                  >
                     {g.homeScore}
                   </span>
                 ) : (
@@ -556,46 +589,113 @@ function MainApp({ userName }) {
                 )}
               </div>
 
-              {/* Spread */}
+              {/* ----- SPREAD ----- */}
               <div style={{ fontSize: "0.85em", color: "#666", marginBottom: 8 }}>
-                {g.awaySpread !== "N/A" && g.homeSpread !== "N/A" 
+                {g.awaySpread !== "N/A" && g.homeSpread !== "N/A"
                   ? `${g.away} (${g.awaySpread}) vs ${g.home} (${g.homeSpread})`
                   : "Spreads unavailable"}
               </div>
 
-              {/* Warnings */}
-              {awayAlreadyPickedByUser && <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>You already picked {g.away}</div>}
-              {homeAlreadyPickedByUser && <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>You already picked {g.home}</div>}
+              {/* ----- PRIOR-PICK WARNINGS ----- */}
+              {awayAlreadyPickedByUser && (
+                <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>
+                  You already picked {g.away}
+                </div>
+              )}
+              {homeAlreadyPickedByUser && (
+                <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>
+                  You already picked {g.home}
+                </div>
+              )}
 
-              {/* Pick Buttons */}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button 
-                  disabled={g.isFinal || gameInPast || awayAlreadyPickedByUser || (hasPickedThisWeek && !userPickedAway)}
-                  style={{ 
-                    flex: 1, padding: "6px 10px", 
-                    backgroundColor: userPickedAway ? "#1e7e34" : (g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF", 
-                    color: "white", border: "none", borderRadius: 4, 
-                    cursor: (g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer", 
-                    fontWeight: userPickedAway ? "bold" : "normal"
-                  }} 
+              {/* ----- PICK BUTTONS + RECAP BUTTON ----- */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {/* Away pick */}
+                <button
+                  disabled={
+                    g.isFinal ||
+                    gameInPast ||
+                    awayAlreadyPickedByUser ||
+                    (hasPickedThisWeek && !userPickedAway)
+                  }
+                  style={{
+                    flex: 1,
+                    padding: "6px 10px",
+                    backgroundColor: userPickedAway
+                      ? "#1e7e34"
+                      : g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek
+                      ? "#ccc"
+                      : "#1E90FF",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 4,
+                    cursor:
+                      g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek
+                        ? "not-allowed"
+                        : "pointer",
+                    fontWeight: userPickedAway ? "bold" : "normal",
+                  }}
                   onClick={() => makePick(g.away)}
                 >
                   {userPickedAway ? `Picked ${g.away}` : `Pick ${g.away}`}
                 </button>
 
-                <button 
-                  disabled={g.isFinal || gameInPast || homeAlreadyPickedByUser || (hasPickedThisWeek && !userPickedHome)}
-                  style={{ 
-                    flex: 1, padding: "6px 10px", 
-                    backgroundColor: userPickedHome ? "#1e7e34" : (g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF", 
-                    color: "white", border: "none", borderRadius: 4, 
-                    cursor: (g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer", 
-                    fontWeight: userPickedHome ? "bold" : "normal"
-                  }} 
+                {/* Home pick */}
+                <button
+                  disabled={
+                    g.isFinal ||
+                    gameInPast ||
+                    homeAlreadyPickedByUser ||
+                    (hasPickedThisWeek && !userPickedHome)
+                  }
+                  style={{
+                    flex: 1,
+                    padding: "6px 10px",
+                    backgroundColor: userPickedHome
+                      ? "#1e7e34"
+                      : g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek
+                      ? "#ccc"
+                      : "#1E90FF",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 4,
+                    cursor:
+                      g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek
+                        ? "not-allowed"
+                        : "pointer",
+                    fontWeight: userPickedHome ? "bold" : "normal",
+                  }}
                   onClick={() => makePick(g.home)}
                 >
                   {userPickedHome ? `Picked ${g.home}` : `Pick ${g.home}`}
                 </button>
+
+                {/* RECAP BUTTON – only for final games */}
+                {g.isFinal && (
+                  <a
+                    href={`https://www.espn.com/nfl/recap?gameId=${g.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "6px 10px",
+                      backgroundColor: "#1E90FF",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 4,
+                      textDecoration: "none",
+                      fontWeight: "bold",
+                      fontSize: "0.9em",
+                      cursor: "pointer",
+                    }}
+                    title="View ESPN recap"
+                  >
+                    {/* Simple icon (you can replace with an SVG if you want) */}
+                    <span style={{ marginRight: 4 }}>Recap</span>
+                  </a>
+                )}
               </div>
             </div>
           );
