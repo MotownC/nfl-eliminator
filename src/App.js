@@ -457,99 +457,10 @@ function MainApp({ userName }) {
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "auto", fontFamily: "Arial, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-      {/* ===== HEADER & PERSONAL SCOREBOARD — FULLY REPLACED ===== */}
-<div style={{ marginBottom: 24 }}>
-  <h2 style={{ margin: 0, fontSize: "1.8em", color: "#333" }}>
-    NFL Eliminator Pool - Week {week}
-  </h2>
-  <p style={{ margin: "6px 0 0 0", color: "#666", fontSize: "1em" }}>
-    Logged in as: <strong>{userName}</strong>
-  </p>
-</div>
-
-<div style={{
-  backgroundColor: "#f0f8ff",
-  border: "1px solid #1E90FF",
-  borderRadius: 8,
-  padding: 16,
-  marginBottom: 24,
-  fontFamily: "Arial, sans-serif",
-  boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
-}}>
-  {/* CURRENT PICK */}
-  <div style={{ marginBottom: 12, fontWeight: "bold", fontSize: "1.05em" }}>
-    {allPicks[userName]?.pick ? (
-      <>
-        <span style={{ color: "#1E90FF" }}>Your Pick:</span> {allPicks[userName].pick}{" "}
-        <span style={{
-          color: allPicks[userName].result === true ? "#28a745" :
-                 allPicks[userName].result === false ? "#dc3545" : "#6c757d"
-        }}>
-          | Status: {allPicks[userName].result === true ? "Won" : 
-                     allPicks[userName].result === false ? "Lost" : "Pending"}
-        </span>
-      </>
-    ) : (
-      <span style={{ color: "#999", fontStyle: "italic" }}>
-        No pick made yet for Week {week}
-      </span>
-    )}
-  </div>
-
-  {/* STANDINGS — FORCE FRESH CALCULATION FROM weeklyPicks */}
-<div style={{ marginBottom: 10 }}>
-  <strong>Overall Standings:</strong>{" "}
-  <span style={{ color: "#1E90FF", fontWeight: "bold", fontSize: "1.05em" }}>
-    {(() => {
-      // RECALCULATE WINS FROM weeklyPicks — BYPASSES seasonStandings
-      const wins = {};
-      APPROVED_USERS.forEach(u => wins[u] = 0);
-
-      Object.values(weeklyPicks).forEach(week => {
-        Object.entries(week).forEach(([user, pick]) => {
-          if (pick.result === true) {
-            wins[user] = (wins[user] || 0) + 1;
-          }
-        });
-      });
-
-      const players = Object.entries(wins)
-        .map(([name, w]) => ({ name, wins: w }))
-        .sort((a, b) => b.wins - a.wins);
-
-      const user = players.find(p => p.name === userName);
-      if (!user) return "N/A";
-
-      const rank = players.findIndex(p => p.name === userName) + 1;
-      const tied = players.filter(p => p.wins === user.wins).length > 1;
-
-      const ordinal = (n) => {
-        const s = ["th", "st", "nd", "rd"];
-        const v = n % 100;
-        return n + (s[(v - 20) % 10] || s[v] || s[0]);
-      };
-
-      const place = tied ? `Tied for ${ordinal(rank)} Place` : `${ordinal(rank)} Place`;
-      const back = user.wins < players[0].wins 
-        ? `, ${players[0].wins - user.wins} game${players[0].wins - user.wins > 1 ? "s" : ""} back`
-        : "";
-
-      return place + back;
-    })()}
-  </span>
-</div>
-  {/* ELIMINATOR STATUS */}
-  <div>
-    <strong>Eliminator Status:</strong>{" "}
-    <span style={{
-      color: userStatus === "Alive" ? "#28a745" : "#dc3545",
-      fontWeight: "bold"
-    }}>
-      {userStatus}
-    </span>
-  </div>
-</div>
-{/* ===== END OF HEADER & SCOREBOARD ===== */}
+        <div>
+          <h2 style={{ margin: 0 }}>NFL Eliminator Pool - Week {week}</h2>
+          <p style={{ margin: "5px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
+        </div>
       </div>
       <h3>Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
       {successMessage && <div style={{ color: "green", backgroundColor: "#d4edda", border: "1px solid #c3e6cb", padding: 12, borderRadius: 4, marginBottom: 15, fontWeight: "bold" }}>{successMessage}</div>}
