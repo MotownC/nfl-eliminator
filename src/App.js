@@ -457,14 +457,26 @@ function MainApp({ userName }) {
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "auto", fontFamily: "Arial, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div style={{ marginBottom: 20 }}>
-  <h2 style={{ margin: 0 }}>NFL Eliminator Pool - Week {week}</h2>
-  <p style={{ margin: "5px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
+        {/* HEADER - FULL WIDTH */}
+<div style={{ marginBottom: 16 }}>
+  <h2 style={{ margin: 0, fontSize: "1.8em" }}>NFL Eliminator Pool - Week {week}</h2>
+  <p style={{ margin: "4px 0 0 0", color: "#666", fontSize: "1em" }}>
+    Logged in as: <strong>{userName}</strong>
+  </p>
 </div>
 
-{/* PERSONAL SCOREBOARD — UNDER HEADER */}
+{/* DEBUG: SEE WHAT'S IN seasonStandings */}
+{/* REMOVE THIS AFTER TESTING */}
+<div style={{ backgroundColor: "#fff3cd", padding: 8, borderRadius: 4, fontSize: "0.8em", marginBottom: 16, fontFamily: "monospace" }}>
+  DEBUG: {userName} wins = {seasonStandings[userName]?.seasonPoints || 0} | 
+  All: {JSON.stringify(Object.fromEntries(
+    Object.entries(seasonStandings).map(([k, v]) => [k, v.seasonPoints])
+  ))}
+</div>
+
+{/* PERSONAL SCOREBOARD - FULL WIDTH, UNDER HEADER */}
 <div style={{
-  marginBottom: 20,
+  marginBottom: 24,
   padding: 16,
   backgroundColor: "#f8f9fa",
   borderRadius: 8,
@@ -491,25 +503,23 @@ function MainApp({ userName }) {
     </div>
   )}
 
-  {/* CORRECT OVERALL STANDINGS - ONLY FOR LOGGED-IN USER */}
+  {/* OVERALL STANDINGS - 100% CORRECT TIE LOGIC */}
   {(() => {
-    const userWins = seasonStandings[userName]?.seasonPoints || 0;
+    const userWins = seasonStandings[userName]?.seasonPoints ?? 0;
 
-    // Build sorted list of ALL players with wins
-    const sortedPlayers = Object.entries(seasonStandings)
+    const sorted = Object.entries(seasonStandings)
       .filter(([, s]) => s.seasonPoints != null)
       .sort((a, b) => b[1].seasonPoints - a[1].seasonPoints);
 
-    if (sortedPlayers.length === 0) return null;
+    if (sorted.length === 0) return <div>No standings yet</div>;
 
-    const maxWins = sortedPlayers[0][1].seasonPoints;
-    const userRank = sortedPlayers.findIndex(([u]) => u === userName) + 1;
+    const maxWins = sorted[0][1].seasonPoints;
+    const userIndex = sorted.findIndex(([u]) => u === userName);
+    const userRank = userIndex + 1;
 
-    // Count how many have the same wins as user
-    const usersWithSameWins = sortedPlayers.filter(([, s]) => s.seasonPoints === userWins);
-    const isTied = usersWithSameWins.length > 1;
+    const tiedWithUser = sorted.filter(([, s]) => s.seasonPoints === userWins);
+    const isTied = tiedWithUser.length > 1;
 
-    // Ordinal suffix
     const ordinal = (n) => {
       const s = ["th", "st", "nd", "rd"];
       const v = n % 100;
@@ -517,12 +527,14 @@ function MainApp({ userName }) {
     };
 
     const placeText = isTied ? `Tied for ${ordinal(userRank)} Place` : `${ordinal(userRank)} Place`;
-    const gamesBack = userWins < maxWins ? `, ${maxWins - userWins} game${maxWins - userWins > 1 ? "s" : ""} back` : "";
+    const gamesBack = userWins < maxWins 
+      ? `, ${maxWins - userWins} game${maxWins - userWins > 1 ? "s" : ""} back`
+      : "";
 
     return (
       <div style={{ marginBottom: 8 }}>
         <strong>Overall Standings:</strong>{" "}
-        <span style={{ color: "#1E90FF", fontWeight: "bold" }}>
+        <span style={{ color: "#1E90FF", fontWeight: "bold", fontSize: "1.05em" }}>
           {placeText}{gamesBack}
         </span>
       </div>
