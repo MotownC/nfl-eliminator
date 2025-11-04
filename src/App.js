@@ -1,4 +1,4 @@
-// Updated: November 04, 2025 - Two-line scores + Recap button + Medals + User standings
+// Updated: November 04, 2025 - Full App.js with medals, clean pick line, correct 1st-place tie
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
@@ -171,7 +171,7 @@ function MainApp({ userName }) {
     };
 
     const placeText =
-      leaderCount === 1 ? ordinal(place) + " Place" : `Tied for ${ordinal(place)} Place`;
+      leaderCount === 1 ? `${ordinal(place)} Place` : `Tied for ${ordinal(place)} Place`;
 
     const gamesBack = userWins < sorted[0][1].seasonPoints
       ? `, ${sorted[0][1].seasonPoints - userWins} game${sorted[0][1].seasonPoints - userWins > 1 ? "s" : ""} back`
@@ -181,7 +181,7 @@ function MainApp({ userName }) {
                   place === 2 ? "2nd Place Medal" : 
                   place === 3 ? "3rd Place Medal" : "";
 
-    return (medal ? medal + " " : "") + placeText + gamesBack;
+    return `${medal} ${placeText}${gamesBack}`.trim();
   };
 
   const retryFirebaseWrite = async (ref, data, maxAttempts = 3, delay = 1000) => {
@@ -496,14 +496,11 @@ function MainApp({ userName }) {
         </div>
       </div>
 
-      {/* ---------- USER PICK & STANDINGS (top) ---------- */}
+      {/* ---------- PERSONALIZED STATUS BOX ---------- */}
       <div style={{ marginBottom: 20, padding: 12, backgroundColor: "#f8f9fa", borderRadius: 6, border: "1px solid #dee2e6" }}>
         {allPicks[userName]?.pick ? (
           <div style={{ marginBottom: 8, fontWeight: "bold", fontSize: "1.05em" }}>
-            <span style={{ color: "#1E90FF" }}>Your Pick:</span>{" "}
-            {allPicks[userName].result === true ? "Checkmark " :
-             allPicks[userName].result === false ? "Cross " :
-             ""}{allPicks[userName].pick}{" "}
+            <span style={{ color: "#1E90FF" }}>Your Pick:</span> {allPicks[userName].pick}{" "}
             <span style={{ fontWeight: "normal", color: "#666" }}>
               | Status: {allPicks[userName].result === true ? "Won" :
                        allPicks[userName].result === false ? "Lost" :
@@ -559,7 +556,6 @@ function MainApp({ userName }) {
               borderRadius: 6, 
               backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9"
             }}>
-              {/* Date/Time + FINAL Badge */}
               <div style={{ 
                 fontSize: "0.9em", 
                 color: "#666", 
@@ -593,7 +589,6 @@ function MainApp({ userName }) {
                 )}
               </div>
 
-              {/* TWO-LINE GAME DISPLAY */}
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: 6, fontWeight: "bold" }}>
                 <img src={getTeamLogo(g.away)} alt={g.away} style={{ width: 28, height: 28 }} onError={(e) => e.target.style.display = 'none'} />
                 <span style={{ flex: 1, minWidth: 140 }}>{g.away}</span>
@@ -618,18 +613,15 @@ function MainApp({ userName }) {
                 )}
               </div>
 
-              {/* Spread */}
               <div style={{ fontSize: "0.85em", color: "#666", margin: "8px 0" }}>
                 {g.awaySpread !== "N/A" && g.homeSpread !== "N/A" 
                   ? `${g.away} (${g.awaySpread}) @ ${g.home} (${g.homeSpread})`
                   : "Spreads unavailable"}
               </div>
 
-              {/* Warnings */}
               {awayAlreadyPickedByUser && <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>You already picked {g.away}</div>}
               {homeAlreadyPickedByUser && <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>You already picked {g.home}</div>}
 
-              {/* Pick Buttons + Recap */}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <button 
                   disabled={g.isFinal || gameInPast || awayAlreadyPickedByUser || (hasPickedThisWeek && !userPickedAway)}
