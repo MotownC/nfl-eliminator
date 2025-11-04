@@ -151,6 +151,44 @@ function MainApp({ userName }) {
     return `${streakType === 'won' ? 'Won' : 'Lost'} ${streak}`;
   };
 
+  const getOrdinal = (n) => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+
+  const calculateStandingsPosition = (user) => {
+    const userWins = seasonStandings[user]?.seasonPoints || 0;
+    const allWins = Object.entries(seasonStandings).map(([name, stats]) => ({
+      name,
+      wins: stats?.seasonPoints || 0
+    }));
+    
+    // Find max wins (leader)
+    const maxWins = Math.max(...allWins.map(p => p.wins));
+    
+    // Count how many people have more wins than user
+    const betterCount = allWins.filter(p => p.wins > userWins).length;
+    const position = betterCount + 1;
+    
+    // Count how many people have same wins as user
+    const tiedCount = allWins.filter(p => p.wins === userWins).length;
+    const isTied = tiedCount > 1;
+    
+    // Calculate games back
+    const gamesBack = maxWins - userWins;
+    
+    // Build string
+    let result = isTied ? `Tied for ${getOrdinal(position)} Place` : `${getOrdinal(position)} Place`;
+    
+    // Add games back if not in first place
+    if (gamesBack > 0) {
+      result += `, ${gamesBack} game${gamesBack === 1 ? '' : 's'} back`;
+    }
+    
+    return result;
+  };
+
   const retryFirebaseWrite = async (ref, data, maxAttempts = 3, delay = 1000) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
