@@ -501,44 +501,49 @@ function MainApp({ userName }) {
         </div>
       </div>
       
-      {/* Pick Confirmation Badge */}
-      {allPicks[userName]?.pick && (
-        <div style={{ 
-          backgroundColor: "#f0f8ff", 
-          border: "2px solid #1E90FF", 
-          borderRadius: 8, 
-          padding: "15px 20px", 
-          marginBottom: 20,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: 10
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: "1.1em", fontWeight: "bold", color: "#333" }}>
-              Your Pick: {allPicks[userName].pick}
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: "1.1em", fontWeight: "bold" }}>
-              Status: <span style={{ 
-                color: allPicks[userName].result === "Pending" 
-                  ? "#6c757d" 
-                  : allPicks[userName].result === true 
-                  ? "#28a745" 
-                  : "#dc3545"
-              }}>
-                {allPicks[userName].result === "Pending" 
-                  ? "Pending" 
-                  : allPicks[userName].result === true 
-                  ? "Won ✓" 
-                  : "Lost ✗"}
+      {/* Status Badge */}
+      <div style={{ 
+        backgroundColor: "#f0f8ff", 
+        border: "2px solid #1E90FF", 
+        borderRadius: 8, 
+        padding: "15px 20px", 
+        marginBottom: 20
+      }}>
+        {allPicks[userName]?.pick && (
+          <div style={{ 
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 10,
+            marginBottom: 12,
+            paddingBottom: 12,
+            borderBottom: "1px solid #1E90FF"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: "1.1em", fontWeight: "bold", color: "#333" }}>
+                Your Pick: ✓ {allPicks[userName].pick}
               </span>
-            </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: "1.1em", fontWeight: "bold" }}>
+                Status: <span style={{ 
+                  color: allPicks[userName].result === "Pending" 
+                    ? "#6c757d" 
+                    : allPicks[userName].result === true 
+                    ? "#28a745" 
+                    : "#dc3545"
+                }}>
+                  {allPicks[userName].result === "Pending" 
+                    ? "Pending" 
+                    : allPicks[userName].result === true 
+                    ? "Won ✓" 
+                    : "Lost ✗"}
+                </span>
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ fontSize: "1.05em" }}>
