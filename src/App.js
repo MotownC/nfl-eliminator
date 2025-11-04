@@ -542,7 +542,6 @@ function MainApp({ userName }) {
       
       <h3>Overall Standings: <span style={{ color: "#1E90FF" }}>{calculateStandingsPosition(userName)}</span></h3>
       <h3>Eliminator Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
-      <h3>Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
       {successMessage && <div style={{ color: "green", backgroundColor: "#d4edda", border: "1px solid #c3e6cb", padding: 12, borderRadius: 4, marginBottom: 15, fontWeight: "bold" }}>{successMessage}</div>}
       {error && <div style={{ color: "#721c24", backgroundColor: "#f8d7da", border: "1px solid #f5c6cb", padding: 12, borderRadius: 4, marginBottom: 15 }}>{error}</div>}
       <div>
