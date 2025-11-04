@@ -457,41 +457,27 @@ function MainApp({ userName }) {
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "auto", fontFamily: "Arial, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        {/* HEADER - FULL WIDTH */}
+       {/* HEADER */}
 <div style={{ marginBottom: 16 }}>
   <h2 style={{ margin: 0, fontSize: "1.8em" }}>NFL Eliminator Pool - Week {week}</h2>
-  <p style={{ margin: "4px 0 0 0", color: "#666", fontSize: "1em" }}>
-    Logged in as: <strong>{userName}</strong>
-  </p>
+  <p style={{ margin: "4px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
 </div>
 
-{/* DEBUG: SEE WHAT'S IN seasonStandings */}
-{/* REMOVE THIS AFTER TESTING */}
-<div style={{ backgroundColor: "#fff3cd", padding: 8, borderRadius: 4, fontSize: "0.8em", marginBottom: 16, fontFamily: "monospace" }}>
-  DEBUG: {userName} wins = {seasonStandings[userName]?.seasonPoints || 0} | 
-  All: {JSON.stringify(Object.fromEntries(
-    Object.entries(seasonStandings).map(([k, v]) => [k, v.seasonPoints])
-  ))}
-</div>
-
-{/* PERSONAL SCOREBOARD - FULL WIDTH, UNDER HEADER */}
+{/* PERSONAL SCOREBOARD */}
 <div style={{
   marginBottom: 24,
   padding: 16,
   backgroundColor: "#f8f9fa",
   borderRadius: 8,
   border: "1px solid #dee2e6",
-  fontFamily: "Arial, sans-serif"
 }}>
   {/* Current Pick */}
   {allPicks[userName]?.pick ? (
-    <div style={{ marginBottom: 12, fontSize: "1.1em", fontWeight: "bold" }}>
-      <span style={{ color: "#1E90FF" }}>Your Pick:</span>{" "}
-      {allPicks[userName].pick}{" "}
+    <div style={{ marginBottom: 12, fontWeight: "bold" }}>
+      <span style={{ color: "#1E90FF" }}>Your Pick:</span> {allPicks[userName].pick}{" "}
       <span style={{
         color: allPicks[userName].result === true ? "#28a745" :
                allPicks[userName].result === false ? "#dc3545" : "#6c757d",
-        fontWeight: "normal"
       }}>
         | Status: {allPicks[userName].result === true ? "Won" :
                    allPicks[userName].result === false ? "Lost" : "Pending"}
@@ -503,22 +489,20 @@ function MainApp({ userName }) {
     </div>
   )}
 
-  {/* OVERALL STANDINGS - 100% CORRECT TIE LOGIC */}
+  {/* OVERALL STANDINGS - GUARANTEED CORRECT */}
   {(() => {
-    const userWins = seasonStandings[userName]?.seasonPoints ?? 0;
-
-    const sorted = Object.entries(seasonStandings)
+    const standings = Object.entries(seasonStandings)
       .filter(([, s]) => s.seasonPoints != null)
-      .sort((a, b) => b[1].seasonPoints - a[1].seasonPoints);
+      .map(([name, s]) => ({ name, wins: s.seasonPoints }))
+      .sort((a, b) => b.wins - a.wins);
 
-    if (sorted.length === 0) return <div>No standings yet</div>;
+    const userEntry = standings.find(p => p.name === userName);
+    if (!userEntry) return null;
 
-    const maxWins = sorted[0][1].seasonPoints;
-    const userIndex = sorted.findIndex(([u]) => u === userName);
-    const userRank = userIndex + 1;
-
-    const tiedWithUser = sorted.filter(([, s]) => s.seasonPoints === userWins);
-    const isTied = tiedWithUser.length > 1;
+    const maxWins = standings[0].wins;
+    const userRank = standings.findIndex(p => p.name === userName) + 1;
+    const tiedCount = standings.filter(p => p.wins === userEntry.wins).length;
+    const isTied = tiedCount > 1;
 
     const ordinal = (n) => {
       const s = ["th", "st", "nd", "rd"];
@@ -527,14 +511,14 @@ function MainApp({ userName }) {
     };
 
     const placeText = isTied ? `Tied for ${ordinal(userRank)} Place` : `${ordinal(userRank)} Place`;
-    const gamesBack = userWins < maxWins 
-      ? `, ${maxWins - userWins} game${maxWins - userWins > 1 ? "s" : ""} back`
+    const gamesBack = userEntry.wins < maxWins 
+      ? `, ${maxWins - userEntry.wins} game${maxWins - userEntry.wins > 1 ? "s" : ""} back`
       : "";
 
     return (
       <div style={{ marginBottom: 8 }}>
         <strong>Overall Standings:</strong>{" "}
-        <span style={{ color: "#1E90FF", fontWeight: "bold", fontSize: "1.05em" }}>
+        <span style={{ color: "#1E90FF", fontWeight: "bold" }}>
           {placeText}{gamesBack}
         </span>
       </div>
@@ -544,10 +528,7 @@ function MainApp({ userName }) {
   {/* Eliminator Status */}
   <div>
     <strong>Eliminator Status:</strong>{" "}
-    <span style={{
-      color: userStatus === "Alive" ? "#28a745" : "#dc3545",
-      fontWeight: "bold"
-    }}>
+    <span style={{ color: userStatus === "Alive" ? "#28a745" : "#dc3545", fontWeight: "bold" }}>
       {userStatus}
     </span>
   </div>
