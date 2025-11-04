@@ -517,7 +517,7 @@ function MainApp({ userName }) {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: "1.1em", fontWeight: "bold", color: "#333" }}>
-              Your Pick: ✓ {allPicks[userName].pick}
+              Your Pick: {allPicks[userName].pick}
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
