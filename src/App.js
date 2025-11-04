@@ -457,13 +457,14 @@ function MainApp({ userName }) {
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "auto", fontFamily: "Arial, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <h2 style={{ margin: 0 }}>NFL Eliminator Pool - Week {week}</h2>
-          <p style={{ margin: "5px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
-        </div>
-        {/* PERSONAL SCOREBOARD - CLEAN, BLUE, NO EMOJIS */}
+        <div style={{ marginBottom: 20 }}>
+  <h2 style={{ margin: 0 }}>NFL Eliminator Pool - Week {week}</h2>
+  <p style={{ margin: "5px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
+</div>
+
+{/* PERSONAL SCOREBOARD — UNDER HEADER */}
 <div style={{
-  margin: "20px 0",
+  marginBottom: 20,
   padding: 16,
   backgroundColor: "#f8f9fa",
   borderRadius: 8,
@@ -490,28 +491,32 @@ function MainApp({ userName }) {
     </div>
   )}
 
-  {/* Overall Standings - ONLY FOR LOGGED-IN USER */}
+  {/* CORRECT OVERALL STANDINGS - ONLY FOR LOGGED-IN USER */}
   {(() => {
     const userWins = seasonStandings[userName]?.seasonPoints || 0;
-    const sorted = Object.entries(seasonStandings)
+
+    // Build sorted list of ALL players with wins
+    const sortedPlayers = Object.entries(seasonStandings)
       .filter(([, s]) => s.seasonPoints != null)
       .sort((a, b) => b[1].seasonPoints - a[1].seasonPoints);
 
-    const maxWins = sorted[0]?.[1].seasonPoints || 0;
-    const userRankIndex = sorted.findIndex(([u]) => u === userName);
-    const place = userRankIndex + 1;
+    if (sortedPlayers.length === 0) return null;
 
-    const usersAtMax = sorted.filter(([, s]) => s.seasonPoints === maxWins);
-    const usersAtUserWins = sorted.filter(([, s]) => s.seasonPoints === userWins);
-    const isTied = usersAtUserWins.length > 1;
+    const maxWins = sortedPlayers[0][1].seasonPoints;
+    const userRank = sortedPlayers.findIndex(([u]) => u === userName) + 1;
 
+    // Count how many have the same wins as user
+    const usersWithSameWins = sortedPlayers.filter(([, s]) => s.seasonPoints === userWins);
+    const isTied = usersWithSameWins.length > 1;
+
+    // Ordinal suffix
     const ordinal = (n) => {
       const s = ["th", "st", "nd", "rd"];
       const v = n % 100;
       return n + (s[(v - 20) % 10] || s[v] || s[0]);
     };
 
-    const placeText = isTied ? `Tied for ${ordinal(place)} Place` : `${ordinal(place)} Place`;
+    const placeText = isTied ? `Tied for ${ordinal(userRank)} Place` : `${ordinal(userRank)} Place`;
     const gamesBack = userWins < maxWins ? `, ${maxWins - userWins} game${maxWins - userWins > 1 ? "s" : ""} back` : "";
 
     return (
