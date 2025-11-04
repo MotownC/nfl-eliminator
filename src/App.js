@@ -1,11 +1,8 @@
-// NFL Eliminator Pool - FULL App.js
-// Updated: November 04, 2025
-// REAL EMOJIS + CORRECT TIED FOR 1ST + NO TEXT EMOJIS
+// Updated: November 03, 2025 - Added final scores + bold winner + FINAL badge
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
 
-// Firebase config
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyBcCdQkuY1Q8tZxCxXpHZPWIQq_qgIYHHw",
   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "nfleliminator-7a33d.firebaseapp.com",
@@ -23,57 +20,57 @@ try {
   console.error("Firebase initialization failed:", err);
 }
 
-// ESPN and Odds API
 const ESPN_API = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard";
 const ODDS_API_KEY = process.env.REACT_APP_ODDS_API_KEY || "f1e2424c4bc6fab51a692a147e0bf88b";
 const ODDS_API = `https://api.the-odds-api.com/v4/sports/americanfootball_nfl/odds/?regions=us&markets=spreads&apiKey=${ODDS_API_KEY}`;
 
-// Helper functions
-const normalizeTeamName = (name) => (!name ? "" : name.toLowerCase().trim().replace(/\s+/g, " "));
-const getTeamNickname = (fullName) => (!fullName ? "" : fullName.trim().split(" ").pop());
+const normalizeTeamName = (name) => {
+  if (!name) return "";
+  return name.toLowerCase().trim().replace(/\s+/g, " ");
+};
+
+const getTeamNickname = (fullName) => {
+  if (!fullName) return "";
+  const parts = fullName.trim().split(" ");
+  return parts[parts.length - 1];
+};
+
 const getTeamAbbr = (teamName) => {
   const abbrs = {
-    Cardinals: "ARI", Falcons: "ATL", Ravens: "BAL", Bills: "BUF",
-    Panthers: "CAR", Bears: "CHI", Bengals: "CIN", Browns: "CLE",
-    Cowboys: "DAL", Broncos: "DEN", Lions: "DET", Packers: "GB",
-    Texans: "HOU", Colts: "IND", Jaguars: "JAX", Chiefs: "KC",
-    Raiders: "LV", Chargers: "LAC", Rams: "LAR", Dolphins: "MIA",
-    Vikings: "MIN", Patriots: "NE", Saints: "NO", Giants: "NYG",
-    Jets: "NYJ", Eagles: "PHI", Steelers: "PIT", "49ers": "SF",
-    Seahawks: "SEA", Buccaneers: "TB", Titans: "TEN", Commanders: "WAS"
+    'Cardinals': 'ARI', 'Falcons': 'ATL', 'Ravens': 'BAL', 'Bills': 'BUF',
+    'Panthers': 'CAR', 'Bears': 'CHI', 'Bengals': 'CIN', 'Browns': 'CLE',
+    'Cowboys': 'DAL', 'Broncos': 'DEN', 'Lions': 'DET', 'Packers': 'GB',
+    'Texans': 'HOU', 'Colts': 'IND', 'Jaguars': 'JAX', 'Chiefs': 'KC',
+    'Raiders': 'LV', 'Chargers': 'LAC', 'Rams': 'LAR', 'Dolphins': 'MIA',
+    'Vikings': 'MIN', 'Patriots': 'NE', 'Saints': 'NO', 'Giants': 'NYG',
+    'Jets': 'NYJ', 'Eagles': 'PHI', 'Steelers': 'PIT', '49ers': 'SF',
+    'Seahawks': 'SEA', 'Buccaneers': 'TB', 'Titans': 'TEN', 'Commanders': 'WAS'
   };
-  return abbrs[getTeamNickname(teamName)] || "NFL";
+  const nickname = getTeamNickname(teamName);
+  return abbrs[nickname] || 'NFL';
 };
-const getTeamLogo = (teamName) => `https://a.espncdn.com/i/teamlogos/nfl/500/${getTeamAbbr(teamName)}.png`;
+
+const getTeamLogo = (teamName) => {
+  const abbr = getTeamAbbr(teamName);
+  return `https://a.espncdn.com/i/teamlogos/nfl/500/${abbr}.png`;
+};
 
 const findMatchingOdds = (game, oddsData) => {
   if (!oddsData || oddsData.length === 0) return null;
-  const home = normalizeTeamName(game.home);
-  const away = normalizeTeamName(game.away);
-  return oddsData.find(o => {
-    const oh = normalizeTeamName(o.home_team);
-    const oa = normalizeTeamName(o.away_team);
-    return (oh === home && oa === away) || (oh === away && oa === home);
+  const homeName = normalizeTeamName(game.home);
+  const awayName = normalizeTeamName(game.away);
+  return oddsData.find(odds => {
+    const oddsHome = normalizeTeamName(odds.home_team);
+    const oddsAway = normalizeTeamName(odds.away_team);
+    return (oddsHome === homeName && oddsAway === awayName) || (oddsHome === awayName && oddsAway === homeName);
   });
 };
 
 const APPROVED_USERS = [
-  "Beth", "Craig", "Jennifer", "Sally", "Curt", "Keith",
-  "Riley", "Seth", "Libby", "Kyle", "Wendi", "Will", "Andrea"
+  'Beth', 'Craig', 'Jennifer', 'Sally', 'Curt', 'Keith',
+  'Riley', 'Seth', 'Libby', 'Kyle', 'Wendi', 'Will', 'Andrea'
 ];
 
-// REAL EMOJIS (Unicode)
-const EMOJI = {
-  gold: "1st Place Medal",
-  silver: "2nd Place Medal",
-  bronze: "3rd Place Medal",
-  check: "Checkmark",
-  cross: "Cross",
-  smile: "Smiling Face",
-  skull: "Skull"
-};
-
-// Login Page
 function LoginPage({ onLogin }) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -106,29 +103,16 @@ function LoginPage({ onLogin }) {
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: "block", marginBottom: 8, color: "#555", fontWeight: "bold" }}>Enter Your Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => { setName(e.target.value); setError(""); }}
-              placeholder="Your name"
-              style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 4, fontSize: 16, boxSizing: "border-box" }}
-              autoFocus
-            />
+            <input type="text" value={name} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder="Your name" style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 4, fontSize: 16, boxSizing: "border-box" }} autoFocus />
           </div>
           {error && <div style={{ color: "red", marginBottom: 15, fontSize: "0.9em" }}>{error}</div>}
-          <button
-            type="submit"
-            style={{ width: "100%", padding: 12, backgroundColor: "#1E90FF", color: "white", border: "none", borderRadius: 4, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}
-          >
-            Enter Pool
-          </button>
+          <button type="submit" style={{ width: "100%", padding: 12, backgroundColor: "#1E90FF", color: "white", border: "none", borderRadius: 4, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}>Enter Pool</button>
         </form>
       </div>
     </div>
   );
 }
 
-// Main App
 function MainApp({ userName }) {
   const [games, setGames] = useState([]);
   const [week, setWeek] = useState(null);
@@ -143,7 +127,6 @@ function MainApp({ userName }) {
   const summaryRef = useRef(null);
   const prevGamesRef = useRef([]);
 
-  // Calculate streak
   const calculateStreak = (user) => {
     const weeks = Object.keys(weeklyPicks).sort((a, b) => Number(b) - Number(a));
     if (weeks.length === 0) return "-";
@@ -168,41 +151,6 @@ function MainApp({ userName }) {
     return `${streakType === 'won' ? 'Won' : 'Lost'} ${streak}`;
   };
 
-  // RANKING: CORRECT TIED FOR 1ST + REAL EMOJIS
-  const getUserRank = (user) => {
-    if (!seasonStandings[user]) return null;
-
-    const sorted = Object.entries(seasonStandings)
-      .filter(([, s]) => s.seasonPoints != null)
-      .sort((a, b) => b[1].seasonPoints - a[1].seasonPoints);
-
-    const userWins = seasonStandings[user].seasonPoints;
-    const maxWins = sorted[0][1].seasonPoints;
-
-    // Find the first user with max wins
-    const firstPlaceIndex = sorted.findIndex(([, s]) => s.seasonPoints === maxWins);
-    const place = firstPlaceIndex + 1;
-
-    const leaders = sorted.filter(([, s]) => s.seasonPoints === userWins);
-    const isTied = leaders.length > 1;
-
-    const ordinal = (n) => {
-      const s = ["th", "st", "nd", "rd"];
-      const v = n % 100;
-      return n + (s[(v - 20) % 10] || s[v] || s[0]);
-    };
-
-    const placeText = isTied ? `Tied for ${ordinal(place)} Place` : `${ordinal(place)} Place`;
-    const gamesBack = userWins < maxWins ? `, ${maxWins - userWins} game${maxWins - userWins > 1 ? "s" : ""} back` : "";
-
-    const medal = place === 1 ? EMOJI.gold :
-                  place === 2 ? EMOJI.silver :
-                  place === 3 ? EMOJI.bronze : "";
-
-    return `${medal} ${placeText}${gamesBack}`.trim();
-  };
-
-  // Retry Firebase write
   const retryFirebaseWrite = async (ref, data, maxAttempts = 3, delay = 1000) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -216,67 +164,93 @@ function MainApp({ userName }) {
     }
   };
 
-  // Update pick results when games finish
   const updatePickResults = async (currentWeek, parsedGames, completedGameIds = []) => {
-    if (!db) return;
+    console.log("=== AUTO-UPDATE FUNCTION CALLED ===");
+    console.log("Current week:", currentWeek);
+    console.log("Completed game IDs:", completedGameIds);
+
+    if (!db) {
+      console.log("No database connection, skipping auto-update");
+      return;
+    }
 
     try {
       const weekRef = ref(db, `weeks/${currentWeek}`);
       const snapshot = await new Promise((resolve, reject) => {
         onValue(weekRef, resolve, reject, { onlyOnce: true });
       });
+
       const picks = snapshot.val() || {};
+      console.log(`Found ${Object.keys(picks).length} picks for week ${currentWeek}`);
 
       const gamesToProcess = completedGameIds.length > 0
         ? parsedGames.filter(g => completedGameIds.includes(g.id))
         : parsedGames.filter(g => g.isFinal);
 
+      console.log(`Processing ${gamesToProcess.length} completed game(s)`);
+
       for (const game of gamesToProcess) {
+        console.log(`Processing completed game: ${game.away} vs ${game.home}, HomeWinner: ${game.homeWinner}, AwayWinner: ${game.awayWinner}`);
+        
         const coltsAliases = ["Indianapolis Colts", "Colts", "IND", "indianapolis colts", "colts", "ind"];
-        const isColtsGame = coltsAliases.some(alias => 
-          normalizeTeamName(game.home).includes(alias) || 
-          normalizeTeamName(game.away).includes(alias)
-        );
+        const isColtsGame = coltsAliases.includes(normalizeTeamName(game.home)) || coltsAliases.includes(normalizeTeamName(game.away));
+        if (isColtsGame) {
+          console.log(`Colts game detected: Home=${game.home}, Away=${game.away}, HomeWinner=${game.homeWinner}, AwayWinner=${game.awayWinner}`);
+        }
 
         for (const [playerName, pickData] of Object.entries(picks)) {
-          if (pickData.result !== "Pending" && pickData.result !== undefined && pickData.result !== null) continue;
+          if (pickData.result !== "Pending" && pickData.result !== undefined && pickData.result !== null) {
+            console.log(`  Skipping ${playerName} - already resolved (Result: ${pickData.result})`);
+            continue;
+          }
 
           const pickTeam = pickData.pick ? normalizeTeamName(pickData.pick) : "";
-          if (!pickTeam) continue;
+          if (!pickTeam) {
+            console.log(`  Skipping ${playerName} - no valid pick`);
+            continue;
+          }
 
-          const isHome = [
-            game.home,
-            normalizeTeamName(game.home),
-            getTeamNickname(game.home),
-            ...coltsAliases
-          ].some(t => normalizeTeamName(t) === pickTeam);
+          const isHome = game.home === pickData.pick ||
+                         normalizeTeamName(game.home) === pickTeam ||
+                         getTeamNickname(game.home) === getTeamNickname(pickData.pick) ||
+                         (coltsAliases.includes(normalizeTeamName(game.home)) && coltsAliases.includes(pickTeam));
+          const isAway = game.away === pickData.pick ||
+                         normalizeTeamName(game.away) === pickTeam ||
+                         getTeamNickname(game.away) === getTeamNickname(pickData.pick) ||
+                         (coltsAliases.includes(normalizeTeamName(game.away)) && coltsAliases.includes(pickTeam));
 
-          const isAway = [
-            game.away,
-            normalizeTeamName(game.away),
-            getTeamNickname(game.away),
-            ...coltsAliases
-          ].some(t => normalizeTeamName(t) === pickTeam);
-
-          if (!isHome && !isAway) continue;
+          if (!isHome && !isAway) {
+            console.log(`  ${playerName}'s pick (${pickData.pick}) not in game ${game.id} (home: ${game.home}, away: ${game.away})`);
+            continue;
+          }
 
           const winner = isHome ? game.homeWinner : game.awayWinner;
-          if (winner === null || winner === undefined) continue;
+          console.log(`  ${playerName} picked ${isHome ? 'home' : 'away'} (${pickData.pick}), winner status: ${winner}`);
+
+          if (winner === null || winner === undefined) {
+            console.warn(`  Warning: No winner determined for game ${game.id}, skipping update for ${playerName}`);
+            continue;
+          }
+
+          if (isColtsGame && (isHome || isAway)) {
+            console.log(`  Colts pick update for ${playerName}: Pick=${pickData.pick}, Result=${winner ? 'Won' : 'Lost'}`);
+          }
 
           const playerRef = ref(db, `weeks/${currentWeek}/${playerName}`);
           await retryFirebaseWrite(playerRef, {
             ...pickData,
             result: winner
           });
+          console.log(`Updated ${playerName}'s pick: ${pickData.pick} = ${winner ? 'Won' : 'Lost'}`);
         }
       }
+      console.log("=== Finished updating pick results ===");
     } catch (err) {
       console.error("Error updating pick results:", err);
-      setError("Failed to update game results.");
+      setError("Failed to update game results. Please try again later.");
     }
   };
 
-  // Fetch games from ESPN + odds
   const fetchGames = async () => {
     try {
       setError(null);
@@ -284,8 +258,8 @@ function MainApp({ userName }) {
       if (!espnRes.ok) throw new Error(`ESPN API error: ${espnRes.status}`);
       const espnData = await espnRes.json();
       if (!espnData.events || espnData.events.length === 0) throw new Error("No games available");
-
       const currentWeek = espnData.week?.number || 1;
+      console.log("ESPN API says current week is:", currentWeek);
       setWeek(currentWeek);
 
       const parsedGames = espnData.events.map(ev => {
@@ -312,27 +286,28 @@ function MainApp({ userName }) {
         };
       });
 
-      // Detect newly completed games
       const completedGames = parsedGames.filter(g => {
-        const prev = prevGamesRef.current.find(pg => pg.id === g.id);
-        return prev && !prev.isFinal && g.isFinal;
+        const prevGame = prevGamesRef.current.find(pg => pg.id === g.id);
+        return (
+          prevGame &&
+          ((prevGame.isFinal === false && g.isFinal === true))
+        );
       });
 
       if (completedGames.length > 0) {
-        console.log("Newly completed games:", completedGames.map(g => g.id));
+        console.log("Detected newly completed games:", completedGames);
       }
 
       await updatePickResults(currentWeek, parsedGames);
 
-      // Odds API with cache
       let oddsData = [];
       const now = Date.now();
       const cachedOdds = sessionStorage.getItem("cachedOdds");
-      const cachedTime = sessionStorage.getItem("cachedOddsTime");
+      const cachedOddsTime = sessionStorage.getItem("cachedOddsTime");
       const dayInMs = 24 * 60 * 60 * 1000;
-
-      if (cachedOdds && cachedTime && (now - parseInt(cachedTime)) < dayInMs) {
+      if (cachedOdds && cachedOddsTime && (now - parseInt(cachedOddsTime)) < dayInMs) {
         oddsData = JSON.parse(cachedOdds);
+        console.log("Using cached odds data");
       } else {
         try {
           const oddsRes = await fetch(ODDS_API);
@@ -341,15 +316,23 @@ function MainApp({ userName }) {
             oddsData = oddsJson.data || oddsJson || [];
             sessionStorage.setItem("cachedOdds", JSON.stringify(oddsData));
             sessionStorage.setItem("cachedOddsTime", now.toString());
-          } else if (cachedOdds) {
-            oddsData = JSON.parse(cachedOdds);
+            console.log("Fetched fresh odds data");
+          } else {
+            console.warn("Odds API returned status:", oddsRes.status);
+            if (cachedOdds) {
+              oddsData = JSON.parse(cachedOdds);
+              console.log("Using stale cached odds due to API error");
+            }
           }
-        } catch (e) {
-          if (cachedOdds) oddsData = JSON.parse(cachedOdds);
+        } catch (oddsErr) {
+          console.warn("Could not fetch odds:", oddsErr);
+          if (cachedOdds) {
+            oddsData = JSON.parse(cachedOdds);
+            console.log("Using cached odds due to fetch error");
+          }
         }
       }
 
-      // Apply spreads
       const updatedGames = parsedGames.map(g => {
         const oddsMatch = findMatchingOdds(g, oddsData);
         const outcomes = oddsMatch?.bookmakers?.[0]?.markets?.[0]?.outcomes || [];
@@ -365,7 +348,7 @@ function MainApp({ userName }) {
       prevGamesRef.current = parsedGames;
       if (db) setupFirebaseListeners(currentWeek, updatedGames, userName);
       setLoading(false);
-      setSuccessMessage("Games loaded");
+      setSuccessMessage("Game data refreshed successfully");
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -374,17 +357,15 @@ function MainApp({ userName }) {
     }
   };
 
-  // Firebase listeners
   const setupFirebaseListeners = (currentWeek, parsedGames, user) => {
-    Object.values(listenersRef.current).forEach(u => u?.());
+    Object.values(listenersRef.current).forEach(unsubscribe => unsubscribe?.());
     listenersRef.current = {};
 
     const weekRef = ref(db, `weeks/${currentWeek}`);
     const unsubWeek = onValue(weekRef, snapshot => {
       const picks = snapshot.val() || {};
       setAllPicks(picks);
-
-      if (picks[user]?.pick) {
+      if (picks[user]) {
         const pickTeam = picks[user].pick;
         const game = parsedGames.find(g =>
           g.home === pickTeam ||
@@ -395,11 +376,18 @@ function MainApp({ userName }) {
           getTeamNickname(g.away) === getTeamNickname(pickTeam)
         );
         if (game) {
-          const isHome = game.home === pickTeam || normalizeTeamName(game.home) === normalizeTeamName(pickTeam);
+          const isHome = game.home === pickTeam || normalizeTeamName(game.home) === normalizeTeamName(pickTeam) || getTeamNickname(game.home) === getTeamNickname(pickTeam);
           const winner = isHome ? game.homeWinner : game.awayWinner;
-          setUserStatus(winner === null ? "Pending" : winner ? "Alive" : "Eliminated");
+          if (winner === null || winner === undefined) setUserStatus("Pending");
+          else setUserStatus(winner ? "Alive" : "Eliminated");
+        } else {
+          console.log(`No game found for ${user}'s pick: ${pickTeam}`);
+          setUserStatus("Pending");
         }
       }
+    }, err => {
+      console.error("Week listener error:", err);
+      setError("Failed to sync with Firebase. Please try again later.");
     });
     listenersRef.current.week = unsubWeek;
 
@@ -407,12 +395,10 @@ function MainApp({ userName }) {
     const unsubAllWeeks = onValue(allWeeksRef, snapshot => {
       const allWeeks = snapshot.val() || {};
       setWeeklyPicks(allWeeks);
-
       const standings = {};
-      APPROVED_USERS.forEach(player => {
-        standings[player] = { seasonPoints: 0, eliminatorActive: true };
+      APPROVED_USERS.forEach(playerName => {
+        standings[playerName] = { seasonPoints: 0, eliminatorActive: true };
       });
-
       Object.entries(allWeeks).forEach(([weekNum, weekData]) => {
         Object.entries(weekData).forEach(([playerName, pickData]) => {
           if (!standings[playerName]) {
@@ -425,9 +411,11 @@ function MainApp({ userName }) {
           }
         });
       });
-
       setSeasonStandings(standings);
       setUserStatus(standings[user]?.eliminatorActive ? "Alive" : "Eliminated");
+    }, err => {
+      console.error("Weekly picks listener error:", err);
+      setError("Failed to sync standings. Please try again later.");
     });
     listenersRef.current.allWeeks = unsubAllWeeks;
   };
@@ -437,7 +425,7 @@ function MainApp({ userName }) {
     const interval = setInterval(fetchGames, 300 * 1000);
     return () => {
       clearInterval(interval);
-      Object.values(listenersRef.current).forEach(u => u?.());
+      Object.values(listenersRef.current).forEach(unsubscribe => unsubscribe?.());
     };
   }, []);
 
@@ -448,133 +436,72 @@ function MainApp({ userName }) {
   };
 
   const makePick = async (team) => {
-    if (!week || !db) {
-      setError("Not ready to pick yet");
-      return;
-    }
-    if (allPicks[userName]?.pick) {
-      setError("You've already made your pick for this week.");
-      return;
-    }
-
+    if (!week || !db) { setError("Not ready to pick yet"); return; }
+    if (allPicks[userName]?.pick) { setError("You've already made your pick for this week. Picks cannot be changed."); return; }
     try {
       const weekRef = ref(db, `weeks/${week}/${userName}`);
-      await retryFirebaseWrite(weekRef, {
-        pick: team,
-        result: "Pending",
-        timestamp: new Date().toISOString()
-      });
-      setSuccessMessage(`Your pick: ${team}`);
+      await retryFirebaseWrite(weekRef, { pick: team, result: "Pending", timestamp: new Date().toISOString() });
+      setSuccessMessage(`Your pick for Week ${week}: ${team}`);
       setError(null);
-      setTimeout(() => {
-        summaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 500);
-      setTimeout(() => setSuccessMessage(""), 5000);
+      setTimeout(() => { summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 500);
+      setTimeout(() => { setSuccessMessage(""); }, 5000);
     } catch (err) {
       console.error("Pick error:", err);
-      setError("Failed to submit pick.");
+      setError("Failed to make pick. Please try again.");
     }
   };
 
   if (loading) return <div style={{ padding: 20, textAlign: "center" }}><p>Loading games...</p></div>;
-  if (error && games.length === 0) return <div style={{ padding: 20, color: "red" }}><p>Error: {error}</p><button onClick={fetchGames}>Retry</button></div>;
+  if (error && games.length === 0) return <div style={{ padding: 20, color: "red" }}><p>Error: {error}</p><button onClick={() => fetchGames()}>Retry</button></div>;
 
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "auto", fontFamily: "Arial, sans-serif" }}>
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
           <h2 style={{ margin: 0 }}>NFL Eliminator Pool - Week {week}</h2>
           <p style={{ margin: "5px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
         </div>
       </div>
-
-      {/* PERSONALIZED STATUS BOX */}
-      <div style={{ marginBottom: 20, padding: 12, backgroundColor: "#f8f9fa", borderRadius: 6, border: "1px solid #dee2e6" }}>
-        {/* Current Pick */}
-        {allPicks[userName]?.pick ? (
-          <div style={{ marginBottom: 8, fontWeight: "bold", fontSize: "1.05em" }}>
-            <span style={{ color: "#1E90FF" }}>Your Pick:</span> {allPicks[userName].pick}{" "}
-            <span style={{ fontWeight: "normal", color: "#666" }}>
-              | Status: {
-                allPicks[userName].result === true ? "Won" :
-                allPicks[userName].result === false ? "Lost" :
-                "Pending"
-              }
-            </span>
-          </div>
-        ) : (
-          <div style={{ marginBottom: 8, color: "#999" }}>
-            You have not made a pick yet.
-          </div>
-        )}
-
-        {/* Standings */}
-        {seasonStandings[userName] && (
-          <div style={{ marginBottom: 6 }}>
-            <strong>Overall Standings:</strong>{" "}
-            <span style={{ color: "#1E90FF", fontSize: "1.05em" }}>
-              {getUserRank(userName)}
-            </span>
-          </div>
-        )}
-
-        {/* Eliminator Status */}
-        <div>
-          <strong>Eliminator Status:</strong>{" "}
-          <span style={{ color: getUserStatusColor() }}>{userStatus}</span>
-        </div>
-      </div>
-
-      {/* Messages */}
-      {successMessage && (
-        <div style={{ color: "green", backgroundColor: "#d4edda", border: "1px solid #c3e6cb", padding: 12, borderRadius: 4, marginBottom: 15, fontWeight: "bold" }}>
-          {successMessage}
-        </div>
-      )}
-      {error && (
-        <div style={{ color: "#721c24", backgroundColor: "#f8d7da", border: "1px solid #f5c6cb", padding: 12, borderRadius: 4, marginBottom: 15 }}>
-          {error}
-        </div>
-      )}
-
-      {/* GAMES LIST */}
+      <h3>Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
+      {successMessage && <div style={{ color: "green", backgroundColor: "#d4edda", border: "1px solid #c3e6cb", padding: 12, borderRadius: 4, marginBottom: 15, fontWeight: "bold" }}>{successMessage}</div>}
+      {error && <div style={{ color: "#721c24", backgroundColor: "#f8d7da", border: "1px solid #f5c6cb", padding: 12, borderRadius: 4, marginBottom: 15 }}>{error}</div>}
       <div>
         <h3>This Week's Games</h3>
         {games.length === 0 ? <p>No games available</p> : games.map(g => {
           const now = new Date();
           const gameDate = new Date(g.kickoff);
           const gameInPast = gameDate < now;
-          const userPreviousPicks = Object.entries(weeklyPicks)
-            .filter(([wk]) => Number(wk) < week)
-            .flatMap(([, picks]) => picks[userName]?.pick)
-            .filter(Boolean);
-          const awayNick = getTeamNickname(g.away);
-          const homeNick = getTeamNickname(g.home);
-          const awayAlreadyPickedByUser = userPreviousPicks.some(p => getTeamNickname(p) === awayNick || p === g.away);
-          const homeAlreadyPickedByUser = userPreviousPicks.some(p => getTeamNickname(p) === homeNick || p === g.home);
+          const userPreviousPicks = Object.entries(weeklyPicks).filter(([wk, _]) => Number(wk) < week).map(([_, picks]) => picks[userName]?.pick).filter(Boolean);
+          const awayNickname = getTeamNickname(g.away);
+          const homeNickname = getTeamNickname(g.home);
+          const awayAlreadyPickedByUser = userPreviousPicks.some(pick => getTeamNickname(pick) === awayNickname || pick === g.away);
+          const homeAlreadyPickedByUser = userPreviousPicks.some(pick => getTeamNickname(pick) === homeNickname || pick === g.home);
           const userPickThisWeek = allPicks[userName]?.pick;
-          const userPickedAway = userPickThisWeek === g.away || getTeamNickname(userPickThisWeek) === awayNick;
-          const userPickedHome = userPickThisWeek === g.home || getTeamNickname(userPickThisWeek) === homeNick;
+          const userPickedAway = userPickThisWeek === g.away || getTeamNickname(userPickThisWeek) === awayNickname;
+          const userPickedHome = userPickThisWeek === g.home || getTeamNickname(userPickThisWeek) === homeNickname;
           const hasPickedThisWeek = !!userPickThisWeek;
-
           return (
-            <div key={g.id} style={{
-              marginBottom: 15,
-              border: "1px solid #ccc",
-              padding: 12,
-              borderRadius: 6,
-              backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9"
-            }}>
-              {/* Date + FINAL */}
-              <div style={{
-                fontSize: "0.9em",
-                color: "#666",
-                marginBottom: 6,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
+            <div
+              key={g.id}
+              style={{
+                marginBottom: 15,
+                border: "1px solid #ccc",
+                padding: 12,
+                borderRadius: 6,
+                backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9",
+              }}
+            >
+              {/* ----- DATE / FINAL BADGE ----- */}
+              <div
+                style={{
+                  fontSize: "0.9em",
+                  color: "#666",
+                  marginBottom: 6,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
                 <span>
                   {gameDate.toLocaleString("en-US", {
                     weekday: "short",
@@ -582,28 +509,53 @@ function MainApp({ userName }) {
                     day: "numeric",
                     hour: "numeric",
                     minute: "2-digit",
-                    timeZoneName: "short"
+                    timeZoneName: "short",
                   })}
                 </span>
                 {g.isFinal && (
-                  <span style={{
-                    fontWeight: "bold",
-                    fontSize: "0.8em",
-                    color: "#333",
-                    backgroundColor: "#f0f0f0",
-                    padding: "2px 6px",
-                    borderRadius: 4,
-                    border: "1px solid #ddd"
-                  }}>FINAL</span>
+                  <span
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: "0.8em",
+                      color: "#333",
+                      backgroundColor: "#f0f0f0",
+                      padding: "2px 6px",
+                      borderRadius: 4,
+                      border: "1px solid #ddd",
+                    }}
+                  >
+                    FINAL
+                  </span>
                 )}
               </div>
 
-              {/* Away Team */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: 6, fontWeight: "bold" }}>
-                <img src={getTeamLogo(g.away)} alt={g.away} style={{ width: 28, height: 28 }} onError={e => e.target.style.display = "none"} />
+              {/* ----- TWO-LINE GAME DISPLAY ----- */}
+              {/* Away line */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  marginBottom: 6,
+                  fontWeight: "bold",
+                }}
+              >
+                <img
+                  src={getTeamLogo(g.away)}
+                  alt={g.away}
+                  style={{ width: 28, height: 28 }}
+                  onError={(e) => (e.target.style.display = "none")}
+                />
                 <span style={{ flex: 1, minWidth: 140 }}>{g.away}</span>
+
                 {g.isFinal ? (
-                  <span style={{ fontWeight: g.awayWinner ? "bold" : "normal", minWidth: 30, textAlign: "right" }}>
+                  <span
+                    style={{
+                      fontWeight: g.awayWinner ? "bold" : "normal",
+                      minWidth: 30,
+                      textAlign: "right",
+                    }}
+                  >
                     {g.awayScore}
                   </span>
                 ) : (
@@ -611,12 +563,31 @@ function MainApp({ userName }) {
                 )}
               </div>
 
-              {/* Home Team */}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold" }}>
-                <img src={getTeamLogo(g.home)} alt={g.home} style={{ width: 28, height: 28 }} onError={e => e.target.style.display = "none"} />
+              {/* Home line */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontWeight: "bold",
+                }}
+              >
+                <img
+                  src={getTeamLogo(g.home)}
+                  alt={g.home}
+                  style={{ width: 28, height: 28 }}
+                  onError={(e) => (e.target.style.display = "none")}
+                />
                 <span style={{ flex: 1, minWidth: 140 }}>{g.home}</span>
+
                 {g.isFinal ? (
-                  <span style={{ fontWeight: g.homeWinner ? "bold" : "normal", minWidth: 30, textAlign: "right" }}>
+                  <span
+                    style={{
+                      fontWeight: g.homeWinner ? "bold" : "normal",
+                      minWidth: 30,
+                      textAlign: "right",
+                    }}
+                  >
                     {g.homeScore}
                   </span>
                 ) : (
@@ -624,58 +595,108 @@ function MainApp({ userName }) {
                 )}
               </div>
 
-              {/* Spread */}
+              {/* ----- SPREAD ----- */}
               <div style={{ fontSize: "0.85em", color: "#666", margin: "8px 0" }}>
                 {g.awaySpread !== "N/A" && g.homeSpread !== "N/A"
                   ? `${g.away} (${g.awaySpread}) @ ${g.home} (${g.homeSpread})`
                   : "Spreads unavailable"}
               </div>
 
-              {/* Prior pick warnings */}
-              {awayAlreadyPickedByUser && <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>You already picked {g.away}</div>}
-              {homeAlreadyPickedByUser && <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>You already picked {g.home}</div>}
+              {/* ----- PRIOR-PICK WARNINGS ----- */}
+              {awayAlreadyPickedByUser && (
+                <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>
+                  You already picked {g.away}
+                </div>
+              )}
+              {homeAlreadyPickedByUser && (
+                <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>
+                  You already picked {g.home}
+                </div>
+              )}
 
-              {/* Pick buttons + Recap */}
+              {/* ----- PICK BUTTONS + RECAP BUTTON ----- */}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {/* Away pick */}
                 <button
-                  disabled={g.isFinal || gameInPast || awayAlreadyPickedByUser || (hasPickedThisWeek && !userPickedAway)}
+                  disabled={
+                    g.isFinal ||
+                    gameInPast ||
+                    awayAlreadyPickedByUser ||
+                    (hasPickedThisWeek && !userPickedAway)
+                  }
                   style={{
-                    flex: 1, padding: "6px 10px",
-                    backgroundColor: userPickedAway ? "#1e7e34" : (g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF",
-                    color: "white", border: "none", borderRadius: 4,
-                    cursor: (g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer",
-                    fontWeight: userPickedAway ? "bold" : "normal"
+                    flex: 1,
+                    padding: "6px 10px",
+                    backgroundColor: userPickedAway
+                      ? "#1e7e34"
+                      : g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek
+                      ? "#ccc"
+                      : "#1E90FF",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 4,
+                    cursor:
+                      g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek
+                        ? "not-allowed"
+                        : "pointer",
+                    fontWeight: userPickedAway ? "bold" : "normal",
                   }}
                   onClick={() => makePick(g.away)}
                 >
                   {userPickedAway ? `Picked ${g.away}` : `Pick ${g.away}`}
                 </button>
 
+                {/* Home pick */}
                 <button
-                  disabled={g.isFinal || gameInPast || homeAlreadyPickedByUser || (hasPickedThisWeek && !userPickedHome)}
+                  disabled={
+                    g.isFinal ||
+                    gameInPast ||
+                    homeAlreadyPickedByUser ||
+                    (hasPickedThisWeek && !userPickedHome)
+                  }
                   style={{
-                    flex: 1, padding: "6px 10px",
-                    backgroundColor: userPickedHome ? "#1e7e34" : (g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF",
-                    color: "white", border: "none", borderRadius: 4,
-                    cursor: (g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer",
-                    fontWeight: userPickedHome ? "bold" : "normal"
+                    flex: 1,
+                    padding: "6px 10px",
+                    backgroundColor: userPickedHome
+                      ? "#1e7e34"
+                      : g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek
+                      ? "#ccc"
+                      : "#1E90FF",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 4,
+                    cursor:
+                      g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek
+                        ? "not-allowed"
+                        : "pointer",
+                    fontWeight: userPickedHome ? "bold" : "normal",
                   }}
                   onClick={() => makePick(g.home)}
                 >
                   {userPickedHome ? `Picked ${g.home}` : `Pick ${g.home}`}
                 </button>
 
+                {/* RECAP BUTTON – only for final games */}
                 {g.isFinal && (
                   <a
                     href={`https://www.espn.com/nfl/recap?gameId=${g.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      padding: "6px 10px", backgroundColor: "#1E90FF", color: "white",
-                      border: "none", borderRadius: 4, textDecoration: "none",
-                      fontWeight: "bold", fontSize: "0.9em", cursor: "pointer"
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "6px 10px",
+                      backgroundColor: "#1E90FF",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 4,
+                      textDecoration: "none",
+                      fontWeight: "bold",
+                      fontSize: "0.9em",
+                      cursor: "pointer",
                     }}
+                    title="View ESPN recap"
                   >
                     <span style={{ marginRight: 4 }}>Recap</span>
                   </a>
@@ -686,7 +707,8 @@ function MainApp({ userName }) {
         })}
       </div>
 
-      {/* SEASON STANDINGS */}
+      {/* Standings & Picks Summary */}
+      {/* ... (unchanged - same as your original) */}
       <h3>Season Standings</h3>
       {Object.keys(seasonStandings).length === 0 ? <p>No standings yet</p> : (
         <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: 30 }}>
@@ -699,54 +721,47 @@ function MainApp({ userName }) {
             </tr>
           </thead>
           <tbody>
-            {Object.entries(seasonStandings)
-              .sort((a, b) => {
-                const wa = a[1]?.seasonPoints || 0;
-                const wb = b[1]?.seasonPoints || 0;
-                return wb - wa || a[0].localeCompare(b[0]);
-              })
-              .map(([u, s]) => (
-                <tr key={u}>
-                  <td style={{ border: "1px solid #ccc", padding: 8 }}>{u}</td>
-                  <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>{s?.seasonPoints || 0}</td>
-                  <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>{calculateStreak(u)}</td>
-                  <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center", fontSize: "1.5em" }}>
-                    {s?.eliminatorActive ? EMOJI.smile : EMOJI.skull}
-                  </td>
-                </tr>
-              ))}
+            {Object.entries(seasonStandings).sort((a, b) => {
+              const winsA = a[1]?.seasonPoints || 0;
+              const winsB = b[1]?.seasonPoints || 0;
+              if (winsB !== winsA) return winsB - winsA;
+              return a[0].localeCompare(b[0]);
+            }).map(([user, stats]) => (
+              <tr key={user}>
+                <td style={{ border: "1px solid #ccc", padding: 8 }}>{user}</td>
+                <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>{stats?.seasonPoints || 0}</td>
+                <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>{calculateStreak(user)}</td>
+                <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center", fontSize: "1.5em" }}>{stats?.eliminatorActive ? "😊" : "💀"}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}
-
-      {/* WEEKLY PICKS SUMMARY */}
       <h3 ref={summaryRef}>Weekly Picks Summary</h3>
       {Object.keys(weeklyPicks).length === 0 ? <p>No picks yet</p> : (
         <table style={{ borderCollapse: "collapse", width: "100%", fontSize: "0.9em" }}>
           <thead>
             <tr>
               <th style={{ border: "1px solid #ccc", padding: 6, backgroundColor: "#f0f0f0" }}>Name</th>
-              {Object.keys(weeklyPicks).sort((a, b) => Number(a) - Number(b)).map(w => (
-                <th key={w} style={{ border: "1px solid #ccc", padding: 6, backgroundColor: "#f0f0f0" }}>Week {w}</th>
-              ))}
+              {Object.keys(weeklyPicks).sort((a, b) => Number(a) - Number(b)).map(wk => <th key={wk} style={{ border: "1px solid #ccc", padding: 6, backgroundColor: "#f0f0f0" }}>Week {wk}</th>)}
             </tr>
           </thead>
           <tbody>
-            {Object.keys(seasonStandings).sort((a, b) => a.localeCompare(b)).map(u => {
-              const curPick = weeklyPicks[week]?.[userName]?.pick;
+            {Object.keys(seasonStandings).sort((a, b) => a.localeCompare(b)).map(user => {
+              const currentUserHasPicked = weeklyPicks[week]?.[userName]?.pick;
               return (
-                <tr key={u}>
-                  <td style={{ border: "1px solid #ccc", padding: 6, fontWeight: "bold" }}>{u}</td>
-                  {Object.keys(weeklyPicks).sort((a, b) => Number(a) - Number(b)).map(w => {
-                    const p = weeklyPicks[w]?.[u]?.pick;
-                    const r = weeklyPicks[w]?.[u]?.result;
-                    const isCur = Number(w) === week;
-                    if (!p) return <td key={w} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}>-</td>;
-                    if (isCur && !curPick) return <td key={w} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center", color: "#999" }}>Locked</td>;
+                <tr key={user}>
+                  <td style={{ border: "1px solid #ccc", padding: 6, fontWeight: "bold" }}>{user}</td>
+                  {Object.keys(weeklyPicks).sort((a, b) => Number(a) - Number(b)).map(wk => {
+                    const pick = weeklyPicks[wk]?.[user]?.pick;
+                    const result = weeklyPicks[wk]?.[user]?.result;
+                    const isCurrentWeek = Number(wk) === week;
+                    if (!pick) return <td key={wk} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}>-</td>;
+                    if (isCurrentWeek && !currentUserHasPicked) return <td key={wk} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center", color: "#999" }}>🔒</td>;
                     return (
-                      <td key={w} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}>
-                        {getTeamNickname(p)}
-                        {r === "Pending" ? null : r === true ? <span style={{ color: "green", marginLeft: 4, fontWeight: "bold" }}>{EMOJI.check}</span> : r === false ? <span style={{ color: "red", marginLeft: 4, fontWeight: "bold" }}>{EMOJI.cross}</span> : <span style={{ color: "#999", marginLeft: 4 }}>-</span>}
+                      <td key={wk} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}>
+                        {getTeamNickname(pick)}
+                        {result === "Pending" ? null : result === true ? <span style={{ color: "green", marginLeft: 4, fontWeight: "bold" }}>✓</span> : result === false ? <span style={{ color: "red", marginLeft: 4, fontWeight: "bold" }}>✗</span> : <span style={{ color: "#999", marginLeft: 4 }}>-</span>}
                       </td>
                     );
                   })}
@@ -756,45 +771,24 @@ function MainApp({ userName }) {
           </tbody>
         </table>
       )}
-
-      {/* VENMO */}
       <div style={{ marginTop: 40, padding: 20, backgroundColor: "#f8f9fa", borderRadius: 8, border: "1px solid #dee2e6", textAlign: "center" }}>
         <h3 style={{ margin: "0 0 15px 0" }}>Entry Fee Payment</h3>
-        <a
-          href="https://venmo.com/u/Craig-Anderson-75?txn=pay&amount=20&note=NFL%20Eliminator%20Entry"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: "inline-block",
-            padding: "12px 24px",
-            backgroundColor: "#3D95CE",
-            color: "white",
-            textDecoration: "none",
-            borderRadius: 6,
-            fontWeight: "bold",
-            fontSize: "16px"
-          }}
-        >
-          Pay $20 via Venmo
-        </a>
+        <a href="https://venmo.com/u/Craig-Anderson-75?txn=pay&amount=20&note=NFL%20Eliminator%20Entry" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", padding: "12px 24px", backgroundColor: "#3D95CE", color: "white", textDecoration: "none", borderRadius: 6, fontWeight: "bold", fontSize: "16px" }}>Pay $20 via Venmo</a>
         <p style={{ margin: "15px 0 0 0", fontSize: "0.9em", color: "#666" }}>Please include your name in the payment note</p>
       </div>
     </div>
   );
 }
 
-// App wrapper
 function App({ userName: initialUserName = null }) {
   const [userName, setUserName] = useState(() => {
     const stored = sessionStorage.getItem("nflEliminatorUser");
     return initialUserName || stored || null;
   });
-
   const handleLogout = () => {
     sessionStorage.removeItem("nflEliminatorUser");
     setUserName(null);
   };
-
   if (!userName) return <LoginPage onLogin={setUserName} />;
   return <MainApp userName={userName} onLogout={handleLogout} />;
 }
