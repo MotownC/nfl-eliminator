@@ -1,4 +1,4 @@
-// Updated: November 03, 2025 - Added final scores + bold winner + FINAL badge
+// Updated: November 04, 2025 - Two-line scores + Recap button + Medals + User standings
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
@@ -149,6 +149,39 @@ function MainApp({ userName }) {
     }
     if (streak === 0) return "-";
     return `${streakType === 'won' ? 'Won' : 'Lost'} ${streak}`;
+  };
+
+  const getUserRank = (user) => {
+    if (!seasonStandings[user]) return null;
+
+    const sorted = Object.entries(seasonStandings)
+      .filter(([_, stats]) => stats.seasonPoints != null)
+      .sort((a, b) => b[1].seasonPoints - a[1].seasonPoints);
+
+    const userWins = seasonStandings[user].seasonPoints;
+    const userIdx = sorted.findIndex(([name]) => name === user);
+    const leaders = sorted.filter(([_, stats]) => stats.seasonPoints === userWins);
+    const leaderCount = leaders.length;
+
+    const place = userIdx + 1;
+    const ordinal = (n) => {
+      const s = ["th", "st", "nd", "rd"];
+      const v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    };
+
+    const placeText =
+      leaderCount === 1 ? ordinal(place) + " Place" : `Tied for ${ordinal(place)} Place`;
+
+    const gamesBack = userWins < sorted[0][1].seasonPoints
+      ? `, ${sorted[0][1].seasonPoints - userWins} game${sorted[0][1].seasonPoints - userWins > 1 ? "s" : ""} back`
+      : "";
+
+    const medal = place === 1 ? "1st Place Medal" : 
+                  place === 2 ? "2nd Place Medal" : 
+                  place === 3 ? "3rd Place Medal" : "";
+
+    return (medal ? medal + " " : "") + placeText + gamesBack;
   };
 
   const retryFirebaseWrite = async (ref, data, maxAttempts = 3, delay = 1000) => {
@@ -462,9 +495,47 @@ function MainApp({ userName }) {
           <p style={{ margin: "5px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
         </div>
       </div>
-      <h3>Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
+
+      {/* ---------- USER PICK & STANDINGS (top) ---------- */}
+      <div style={{ marginBottom: 20, padding: 12, backgroundColor: "#f8f9fa", borderRadius: 6, border: "1px solid #dee2e6" }}>
+        {allPicks[userName]?.pick ? (
+          <div style={{ marginBottom: 8, fontWeight: "bold", fontSize: "1.05em" }}>
+            <span style={{ color: "#1E90FF" }}>Your Pick:</span>{" "}
+            {allPicks[userName].result === true ? "Checkmark " :
+             allPicks[userName].result === false ? "Cross " :
+             ""}{allPicks[userName].pick}{" "}
+            <span style={{ fontWeight: "normal", color: "#666" }}>
+              | Status: {allPicks[userName].result === true ? "Won" :
+                       allPicks[userName].result === false ? "Lost" :
+                       "Pending"}
+            </span>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 8, color: "#999" }}>
+            You have not made a pick yet.
+          </div>
+        )}
+
+        {seasonStandings[userName] && (
+          <div style={{ marginBottom: 6 }}>
+            <strong>Overall Standings:</strong>{" "}
+            <span style={{ color: "#1E90FF", fontSize: "1.05em" }}>
+              {getUserRank(userName)}
+            </span>
+          </div>
+        )}
+
+        <div>
+          <strong>Eliminator Status:</strong>{" "}
+          <span style={{ color: getUserStatusColor() }}>
+            {userStatus}
+          </span>
+        </div>
+      </div>
+
       {successMessage && <div style={{ color: "green", backgroundColor: "#d4edda", border: "1px solid #c3e6cb", padding: 12, borderRadius: 4, marginBottom: 15, fontWeight: "bold" }}>{successMessage}</div>}
       {error && <div style={{ color: "#721c24", backgroundColor: "#f8d7da", border: "1px solid #f5c6cb", padding: 12, borderRadius: 4, marginBottom: 15 }}>{error}</div>}
+
       <div>
         <h3>This Week's Games</h3>
         {games.length === 0 ? <p>No games available</p> : games.map(g => {
@@ -481,81 +552,53 @@ function MainApp({ userName }) {
           const userPickedHome = userPickThisWeek === g.home || getTeamNickname(userPickThisWeek) === homeNickname;
           const hasPickedThisWeek = !!userPickThisWeek;
           return (
-            <div
-              key={g.id}
-              style={{
-                marginBottom: 15,
-                border: "1px solid #ccc",
-                padding: 12,
-                borderRadius: 6,
-                backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9",
-              }}
-            >
-              {/* ----- DATE / FINAL BADGE ----- */}
-              <div
-                style={{
-                  fontSize: "0.9em",
-                  color: "#666",
-                  marginBottom: 6,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
+            <div key={g.id} style={{ 
+              marginBottom: 15, 
+              border: "1px solid #ccc", 
+              padding: 12, 
+              borderRadius: 6, 
+              backgroundColor: gameInPast ? "#e0e0e0" : "#f9f9f9"
+            }}>
+              {/* Date/Time + FINAL Badge */}
+              <div style={{ 
+                fontSize: "0.9em", 
+                color: "#666", 
+                marginBottom: 6,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
                 <span>
-                  {gameDate.toLocaleString("en-US", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                    timeZoneName: "short",
+                  {gameDate.toLocaleString('en-US', { 
+                    weekday: 'short',
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    timeZoneName: 'short'
                   })}
                 </span>
                 {g.isFinal && (
-                  <span
-                    style={{
-                      fontWeight: "bold",
-                      fontSize: "0.8em",
-                      color: "#333",
-                      backgroundColor: "#f0f0f0",
-                      padding: "2px 6px",
-                      borderRadius: 4,
-                      border: "1px solid #ddd",
-                    }}
-                  >
+                  <span style={{ 
+                    fontWeight: "bold", 
+                    fontSize: "0.8em", 
+                    color: "#333",
+                    backgroundColor: "#f0f0f0",
+                    padding: "2px 6px",
+                    borderRadius: 4,
+                    border: "1px solid #ddd"
+                  }}>
                     FINAL
                   </span>
                 )}
               </div>
 
-              {/* ----- TWO-LINE GAME DISPLAY ----- */}
-              {/* Away line */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginBottom: 6,
-                  fontWeight: "bold",
-                }}
-              >
-                <img
-                  src={getTeamLogo(g.away)}
-                  alt={g.away}
-                  style={{ width: 28, height: 28 }}
-                  onError={(e) => (e.target.style.display = "none")}
-                />
+              {/* TWO-LINE GAME DISPLAY */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: 6, fontWeight: "bold" }}>
+                <img src={getTeamLogo(g.away)} alt={g.away} style={{ width: 28, height: 28 }} onError={(e) => e.target.style.display = 'none'} />
                 <span style={{ flex: 1, minWidth: 140 }}>{g.away}</span>
-
                 {g.isFinal ? (
-                  <span
-                    style={{
-                      fontWeight: g.awayWinner ? "bold" : "normal",
-                      minWidth: 30,
-                      textAlign: "right",
-                    }}
-                  >
+                  <span style={{ fontWeight: g.awayWinner ? "bold" : "normal", minWidth: 30, textAlign: "right" }}>
                     {g.awayScore}
                   </span>
                 ) : (
@@ -563,31 +606,11 @@ function MainApp({ userName }) {
                 )}
               </div>
 
-              {/* Home line */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontWeight: "bold",
-                }}
-              >
-                <img
-                  src={getTeamLogo(g.home)}
-                  alt={g.home}
-                  style={{ width: 28, height: 28 }}
-                  onError={(e) => (e.target.style.display = "none")}
-                />
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold" }}>
+                <img src={getTeamLogo(g.home)} alt={g.home} style={{ width: 28, height: 28 }} onError={(e) => e.target.style.display = 'none'} />
                 <span style={{ flex: 1, minWidth: 140 }}>{g.home}</span>
-
                 {g.isFinal ? (
-                  <span
-                    style={{
-                      fontWeight: g.homeWinner ? "bold" : "normal",
-                      minWidth: 30,
-                      textAlign: "right",
-                    }}
-                  >
+                  <span style={{ fontWeight: g.homeWinner ? "bold" : "normal", minWidth: 30, textAlign: "right" }}>
                     {g.homeScore}
                   </span>
                 ) : (
@@ -595,88 +618,47 @@ function MainApp({ userName }) {
                 )}
               </div>
 
-              {/* ----- SPREAD ----- */}
+              {/* Spread */}
               <div style={{ fontSize: "0.85em", color: "#666", margin: "8px 0" }}>
-                {g.awaySpread !== "N/A" && g.homeSpread !== "N/A"
+                {g.awaySpread !== "N/A" && g.homeSpread !== "N/A" 
                   ? `${g.away} (${g.awaySpread}) @ ${g.home} (${g.homeSpread})`
                   : "Spreads unavailable"}
               </div>
 
-              {/* ----- PRIOR-PICK WARNINGS ----- */}
-              {awayAlreadyPickedByUser && (
-                <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>
-                  You already picked {g.away}
-                </div>
-              )}
-              {homeAlreadyPickedByUser && (
-                <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>
-                  You already picked {g.home}
-                </div>
-              )}
+              {/* Warnings */}
+              {awayAlreadyPickedByUser && <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>You already picked {g.away}</div>}
+              {homeAlreadyPickedByUser && <div style={{ fontSize: "0.8em", color: "#999", marginBottom: 4 }}>You already picked {g.home}</div>}
 
-              {/* ----- PICK BUTTONS + RECAP BUTTON ----- */}
+              {/* Pick Buttons + Recap */}
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                {/* Away pick */}
-                <button
-                  disabled={
-                    g.isFinal ||
-                    gameInPast ||
-                    awayAlreadyPickedByUser ||
-                    (hasPickedThisWeek && !userPickedAway)
-                  }
-                  style={{
-                    flex: 1,
-                    padding: "6px 10px",
-                    backgroundColor: userPickedAway
-                      ? "#1e7e34"
-                      : g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek
-                      ? "#ccc"
-                      : "#1E90FF",
-                    color: "white",
-                    border: "none",
-                    borderRadius: 4,
-                    cursor:
-                      g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek
-                        ? "not-allowed"
-                        : "pointer",
-                    fontWeight: userPickedAway ? "bold" : "normal",
-                  }}
+                <button 
+                  disabled={g.isFinal || gameInPast || awayAlreadyPickedByUser || (hasPickedThisWeek && !userPickedAway)}
+                  style={{ 
+                    flex: 1, padding: "6px 10px", 
+                    backgroundColor: userPickedAway ? "#1e7e34" : (g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF", 
+                    color: "white", border: "none", borderRadius: 4, 
+                    cursor: (g.isFinal || gameInPast || awayAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer", 
+                    fontWeight: userPickedAway ? "bold" : "normal"
+                  }} 
                   onClick={() => makePick(g.away)}
                 >
                   {userPickedAway ? `Picked ${g.away}` : `Pick ${g.away}`}
                 </button>
 
-                {/* Home pick */}
-                <button
-                  disabled={
-                    g.isFinal ||
-                    gameInPast ||
-                    homeAlreadyPickedByUser ||
-                    (hasPickedThisWeek && !userPickedHome)
-                  }
-                  style={{
-                    flex: 1,
-                    padding: "6px 10px",
-                    backgroundColor: userPickedHome
-                      ? "#1e7e34"
-                      : g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek
-                      ? "#ccc"
-                      : "#1E90FF",
-                    color: "white",
-                    border: "none",
-                    borderRadius: 4,
-                    cursor:
-                      g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek
-                        ? "not-allowed"
-                        : "pointer",
-                    fontWeight: userPickedHome ? "bold" : "normal",
-                  }}
+                <button 
+                  disabled={g.isFinal || gameInPast || homeAlreadyPickedByUser || (hasPickedThisWeek && !userPickedHome)}
+                  style={{ 
+                    flex: 1, padding: "6px 10px", 
+                    backgroundColor: userPickedHome ? "#1e7e34" : (g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "#ccc" : "#1E90FF", 
+                    color: "white", border: "none", borderRadius: 4, 
+                    cursor: (g.isFinal || gameInPast || homeAlreadyPickedByUser || hasPickedThisWeek) ? "not-allowed" : "pointer", 
+                    fontWeight: userPickedHome ? "bold" : "normal"
+                  }} 
                   onClick={() => makePick(g.home)}
                 >
                   {userPickedHome ? `Picked ${g.home}` : `Pick ${g.home}`}
                 </button>
 
-                {/* RECAP BUTTON – only for final games */}
                 {g.isFinal && (
                   <a
                     href={`https://www.espn.com/nfl/recap?gameId=${g.id}`}
@@ -707,8 +689,6 @@ function MainApp({ userName }) {
         })}
       </div>
 
-      {/* Standings & Picks Summary */}
-      {/* ... (unchanged - same as your original) */}
       <h3>Season Standings</h3>
       {Object.keys(seasonStandings).length === 0 ? <p>No standings yet</p> : (
         <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: 30 }}>
@@ -731,7 +711,7 @@ function MainApp({ userName }) {
                 <td style={{ border: "1px solid #ccc", padding: 8 }}>{user}</td>
                 <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>{stats?.seasonPoints || 0}</td>
                 <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>{calculateStreak(user)}</td>
-                <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center", fontSize: "1.5em" }}>{stats?.eliminatorActive ? "😊" : "💀"}</td>
+                <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center", fontSize: "1.5em" }}>{stats?.eliminatorActive ? "Smiling Face" : "Skull"}</td>
               </tr>
             ))}
           </tbody>
@@ -757,11 +737,11 @@ function MainApp({ userName }) {
                     const result = weeklyPicks[wk]?.[user]?.result;
                     const isCurrentWeek = Number(wk) === week;
                     if (!pick) return <td key={wk} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}>-</td>;
-                    if (isCurrentWeek && !currentUserHasPicked) return <td key={wk} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center", color: "#999" }}>🔒</td>;
+                    if (isCurrentWeek && !currentUserHasPicked) return <td key={wk} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center", color: "#999" }}>Locked</td>;
                     return (
                       <td key={wk} style={{ border: "1px solid #ccc", padding: 6, textAlign: "center" }}>
                         {getTeamNickname(pick)}
-                        {result === "Pending" ? null : result === true ? <span style={{ color: "green", marginLeft: 4, fontWeight: "bold" }}>✓</span> : result === false ? <span style={{ color: "red", marginLeft: 4, fontWeight: "bold" }}>✗</span> : <span style={{ color: "#999", marginLeft: 4 }}>-</span>}
+                        {result === "Pending" ? null : result === true ? <span style={{ color: "green", marginLeft: 4, fontWeight: "bold" }}>Checkmark</span> : result === false ? <span style={{ color: "red", marginLeft: 4, fontWeight: "bold" }}>Cross</span> : <span style={{ color: "#999", marginLeft: 4 }}>-</span>}
                       </td>
                     );
                   })}
