@@ -457,82 +457,91 @@ function MainApp({ userName }) {
   return (
     <div style={{ padding: 20, maxWidth: 900, margin: "auto", fontFamily: "Arial, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-       {/* HEADER */}
-<div style={{ marginBottom: 16 }}>
-  <h2 style={{ margin: 0, fontSize: "1.8em" }}>NFL Eliminator Pool - Week {week}</h2>
-  <p style={{ margin: "4px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
+      {/* ===== HEADER & PERSONAL SCOREBOARD — FULLY REPLACED ===== */}
+<div style={{ marginBottom: 24 }}>
+  <h2 style={{ margin: 0, fontSize: "1.8em", color: "#333" }}>
+    NFL Eliminator Pool - Week {week}
+  </h2>
+  <p style={{ margin: "6px 0 0 0", color: "#666", fontSize: "1em" }}>
+    Logged in as: <strong>{userName}</strong>
+  </p>
 </div>
 
-{/* PERSONAL SCOREBOARD */}
 <div style={{
-  marginBottom: 24,
-  padding: 16,
-  backgroundColor: "#f8f9fa",
+  backgroundColor: "#f0f8ff",
+  border: "1px solid #1E90FF",
   borderRadius: 8,
-  border: "1px solid #dee2e6",
+  padding: 16,
+  marginBottom: 24,
+  fontFamily: "Arial, sans-serif",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
 }}>
-  {/* Current Pick */}
-  {allPicks[userName]?.pick ? (
-    <div style={{ marginBottom: 12, fontWeight: "bold" }}>
-      <span style={{ color: "#1E90FF" }}>Your Pick:</span> {allPicks[userName].pick}{" "}
-      <span style={{
-        color: allPicks[userName].result === true ? "#28a745" :
-               allPicks[userName].result === false ? "#dc3545" : "#6c757d",
-      }}>
-        | Status: {allPicks[userName].result === true ? "Won" :
-                   allPicks[userName].result === false ? "Lost" : "Pending"}
-      </span>
-    </div>
-  ) : (
-    <div style={{ marginBottom: 12, color: "#999", fontStyle: "italic" }}>
-      No pick made yet for Week {week}
-    </div>
-  )}
-
-  {/* OVERALL STANDINGS - GUARANTEED CORRECT */}
-  {(() => {
-    const standings = Object.entries(seasonStandings)
-      .filter(([, s]) => s.seasonPoints != null)
-      .map(([name, s]) => ({ name, wins: s.seasonPoints }))
-      .sort((a, b) => b.wins - a.wins);
-
-    const userEntry = standings.find(p => p.name === userName);
-    if (!userEntry) return null;
-
-    const maxWins = standings[0].wins;
-    const userRank = standings.findIndex(p => p.name === userName) + 1;
-    const tiedCount = standings.filter(p => p.wins === userEntry.wins).length;
-    const isTied = tiedCount > 1;
-
-    const ordinal = (n) => {
-      const s = ["th", "st", "nd", "rd"];
-      const v = n % 100;
-      return n + (s[(v - 20) % 10] || s[v] || s[0]);
-    };
-
-    const placeText = isTied ? `Tied for ${ordinal(userRank)} Place` : `${ordinal(userRank)} Place`;
-    const gamesBack = userEntry.wins < maxWins 
-      ? `, ${maxWins - userEntry.wins} game${maxWins - userEntry.wins > 1 ? "s" : ""} back`
-      : "";
-
-    return (
-      <div style={{ marginBottom: 8 }}>
-        <strong>Overall Standings:</strong>{" "}
-        <span style={{ color: "#1E90FF", fontWeight: "bold" }}>
-          {placeText}{gamesBack}
+  {/* CURRENT PICK */}
+  <div style={{ marginBottom: 12, fontWeight: "bold", fontSize: "1.05em" }}>
+    {allPicks[userName]?.pick ? (
+      <>
+        <span style={{ color: "#1E90FF" }}>Your Pick:</span> {allPicks[userName].pick}{" "}
+        <span style={{
+          color: allPicks[userName].result === true ? "#28a745" :
+                 allPicks[userName].result === false ? "#dc3545" : "#6c757d"
+        }}>
+          | Status: {allPicks[userName].result === true ? "Won" : 
+                     allPicks[userName].result === false ? "Lost" : "Pending"}
         </span>
-      </div>
-    );
-  })()}
+      </>
+    ) : (
+      <span style={{ color: "#999", fontStyle: "italic" }}>
+        No pick made yet for Week {week}
+      </span>
+    )}
+  </div>
 
-  {/* Eliminator Status */}
+  {/* STANDINGS — 100% CORRECT, NO CACHING */}
+  <div style={{ marginBottom: 10 }}>
+    <strong>Overall Standings:</strong>{" "}
+    <span style={{ color: "#1E90FF", fontWeight: "bold", fontSize: "1.05em" }}>
+      {(() => {
+        const players = Object.entries(seasonStandings)
+          .filter(([, s]) => s.seasonPoints != null)
+          .map(([name, s]) => ({ name, wins: s.seasonPoints }))
+          .sort((a, b) => b.wins - a.wins);
+
+        const user = players.find(p => p.name === userName);
+        if (!user) return "N/A";
+
+        const rank = players.findIndex(p => p.name === userName) + 1;
+        const tied = players.filter(p => p.wins === user.wins);
+        const isTied = tied.length > 1;
+
+        const ordinal = (n) => {
+          const s = ["th", "st", "nd", "rd"];
+          const v = n % 100;
+          return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        };
+
+        const place = isTied ? `Tied for ${ordinal(rank)} Place` : `${ordinal(rank)} Place`;
+        const leaderWins = players[0].wins;
+        const back = user.wins < leaderWins 
+          ? `, ${leaderWins - user.wins} game${leaderWins - user.wins > 1 ? "s" : ""} back`
+          : "";
+
+        return place + back;
+      })()}
+    </span>
+  </div>
+
+  {/* ELIMINATOR STATUS */}
   <div>
     <strong>Eliminator Status:</strong>{" "}
-    <span style={{ color: userStatus === "Alive" ? "#28a745" : "#dc3545", fontWeight: "bold" }}>
+    <span style={{
+      color: userStatus === "Alive" ? "#28a745" : "#dc3545",
+      fontWeight: "bold"
+    }}>
       {userStatus}
     </span>
   </div>
 </div>
+{/* ===== END OF HEADER & SCOREBOARD ===== */}
       </div>
       <h3>Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
       {successMessage && <div style={{ color: "green", backgroundColor: "#d4edda", border: "1px solid #c3e6cb", padding: 12, borderRadius: 4, marginBottom: 15, fontWeight: "bold" }}>{successMessage}</div>}
