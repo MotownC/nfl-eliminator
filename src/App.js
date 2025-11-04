@@ -461,6 +461,80 @@ function MainApp({ userName }) {
           <h2 style={{ margin: 0 }}>NFL Eliminator Pool - Week {week}</h2>
           <p style={{ margin: "5px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
         </div>
+        {/* PERSONAL SCOREBOARD - CLEAN, BLUE, NO EMOJIS */}
+<div style={{
+  margin: "20px 0",
+  padding: 16,
+  backgroundColor: "#f8f9fa",
+  borderRadius: 8,
+  border: "1px solid #dee2e6",
+  fontFamily: "Arial, sans-serif"
+}}>
+  {/* Current Pick */}
+  {allPicks[userName]?.pick ? (
+    <div style={{ marginBottom: 12, fontSize: "1.1em", fontWeight: "bold" }}>
+      <span style={{ color: "#1E90FF" }}>Your Pick:</span>{" "}
+      {allPicks[userName].pick}{" "}
+      <span style={{
+        color: allPicks[userName].result === true ? "#28a745" :
+               allPicks[userName].result === false ? "#dc3545" : "#6c757d",
+        fontWeight: "normal"
+      }}>
+        | Status: {allPicks[userName].result === true ? "Won" :
+                   allPicks[userName].result === false ? "Lost" : "Pending"}
+      </span>
+    </div>
+  ) : (
+    <div style={{ marginBottom: 12, color: "#999", fontStyle: "italic" }}>
+      No pick made yet for Week {week}
+    </div>
+  )}
+
+  {/* Overall Standings - ONLY FOR LOGGED-IN USER */}
+  {(() => {
+    const userWins = seasonStandings[userName]?.seasonPoints || 0;
+    const sorted = Object.entries(seasonStandings)
+      .filter(([, s]) => s.seasonPoints != null)
+      .sort((a, b) => b[1].seasonPoints - a[1].seasonPoints);
+
+    const maxWins = sorted[0]?.[1].seasonPoints || 0;
+    const userRankIndex = sorted.findIndex(([u]) => u === userName);
+    const place = userRankIndex + 1;
+
+    const usersAtMax = sorted.filter(([, s]) => s.seasonPoints === maxWins);
+    const usersAtUserWins = sorted.filter(([, s]) => s.seasonPoints === userWins);
+    const isTied = usersAtUserWins.length > 1;
+
+    const ordinal = (n) => {
+      const s = ["th", "st", "nd", "rd"];
+      const v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    };
+
+    const placeText = isTied ? `Tied for ${ordinal(place)} Place` : `${ordinal(place)} Place`;
+    const gamesBack = userWins < maxWins ? `, ${maxWins - userWins} game${maxWins - userWins > 1 ? "s" : ""} back` : "";
+
+    return (
+      <div style={{ marginBottom: 8 }}>
+        <strong>Overall Standings:</strong>{" "}
+        <span style={{ color: "#1E90FF", fontWeight: "bold" }}>
+          {placeText}{gamesBack}
+        </span>
+      </div>
+    );
+  })()}
+
+  {/* Eliminator Status */}
+  <div>
+    <strong>Eliminator Status:</strong>{" "}
+    <span style={{
+      color: userStatus === "Alive" ? "#28a745" : "#dc3545",
+      fontWeight: "bold"
+    }}>
+      {userStatus}
+    </span>
+  </div>
+</div>
       </div>
       <h3>Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
       {successMessage && <div style={{ color: "green", backgroundColor: "#d4edda", border: "1px solid #c3e6cb", padding: 12, borderRadius: 4, marginBottom: 15, fontWeight: "bold" }}>{successMessage}</div>}
