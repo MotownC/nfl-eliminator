@@ -496,40 +496,48 @@ function MainApp({ userName }) {
     )}
   </div>
 
-  {/* STANDINGS — 100% CORRECT, NO CACHING */}
-  <div style={{ marginBottom: 10 }}>
-    <strong>Overall Standings:</strong>{" "}
-    <span style={{ color: "#1E90FF", fontWeight: "bold", fontSize: "1.05em" }}>
-      {(() => {
-        const players = Object.entries(seasonStandings)
-          .filter(([, s]) => s.seasonPoints != null)
-          .map(([name, s]) => ({ name, wins: s.seasonPoints }))
-          .sort((a, b) => b.wins - a.wins);
+  {/* STANDINGS — FORCE FRESH CALCULATION FROM weeklyPicks */}
+<div style={{ marginBottom: 10 }}>
+  <strong>Overall Standings:</strong>{" "}
+  <span style={{ color: "#1E90FF", fontWeight: "bold", fontSize: "1.05em" }}>
+    {(() => {
+      // RECALCULATE WINS FROM weeklyPicks — BYPASSES seasonStandings
+      const wins = {};
+      APPROVED_USERS.forEach(u => wins[u] = 0);
 
-        const user = players.find(p => p.name === userName);
-        if (!user) return "N/A";
+      Object.values(weeklyPicks).forEach(week => {
+        Object.entries(week).forEach(([user, pick]) => {
+          if (pick.result === true) {
+            wins[user] = (wins[user] || 0) + 1;
+          }
+        });
+      });
 
-        const rank = players.findIndex(p => p.name === userName) + 1;
-        const tied = players.filter(p => p.wins === user.wins);
-        const isTied = tied.length > 1;
+      const players = Object.entries(wins)
+        .map(([name, w]) => ({ name, wins: w }))
+        .sort((a, b) => b.wins - a.wins);
 
-        const ordinal = (n) => {
-          const s = ["th", "st", "nd", "rd"];
-          const v = n % 100;
-          return n + (s[(v - 20) % 10] || s[v] || s[0]);
-        };
+      const user = players.find(p => p.name === userName);
+      if (!user) return "N/A";
 
-        const place = isTied ? `Tied for ${ordinal(rank)} Place` : `${ordinal(rank)} Place`;
-        const leaderWins = players[0].wins;
-        const back = user.wins < leaderWins 
-          ? `, ${leaderWins - user.wins} game${leaderWins - user.wins > 1 ? "s" : ""} back`
-          : "";
+      const rank = players.findIndex(p => p.name === userName) + 1;
+      const tied = players.filter(p => p.wins === user.wins).length > 1;
 
-        return place + back;
-      })()}
-    </span>
-  </div>
+      const ordinal = (n) => {
+        const s = ["th", "st", "nd", "rd"];
+        const v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+      };
 
+      const place = tied ? `Tied for ${ordinal(rank)} Place` : `${ordinal(rank)} Place`;
+      const back = user.wins < players[0].wins 
+        ? `, ${players[0].wins - user.wins} game${players[0].wins - user.wins > 1 ? "s" : ""} back`
+        : "";
+
+      return place + back;
+    })()}
+  </span>
+</div>
   {/* ELIMINATOR STATUS */}
   <div>
     <strong>Eliminator Status:</strong>{" "}
