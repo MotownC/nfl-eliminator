@@ -462,6 +462,48 @@ function MainApp({ userName }) {
           <p style={{ margin: "5px 0 0 0", color: "#666" }}>Logged in as: <strong>{userName}</strong></p>
         </div>
       </div>
+      
+      {/* Pick Confirmation Badge */}
+      {allPicks[userName]?.pick && (
+        <div style={{ 
+          backgroundColor: "#f0f8ff", 
+          border: "2px solid #1E90FF", 
+          borderRadius: 8, 
+          padding: "15px 20px", 
+          marginBottom: 20,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 10
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: "1.1em", fontWeight: "bold", color: "#333" }}>
+              Your Pick: ✓ {allPicks[userName].pick}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: "1.1em", fontWeight: "bold" }}>
+              Status: <span style={{ 
+                color: allPicks[userName].result === "Pending" 
+                  ? "#6c757d" 
+                  : allPicks[userName].result === true 
+                  ? "#28a745" 
+                  : "#dc3545"
+              }}>
+                {allPicks[userName].result === "Pending" 
+                  ? "Pending" 
+                  : allPicks[userName].result === true 
+                  ? "Won ✓" 
+                  : "Lost ✗"}
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
+      
+      <h3>Overall Standings: <span style={{ color: "#1E90FF" }}>{calculateStandingsPosition(userName)}</span></h3>
+      <h3>Eliminator Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
       <h3>Status: <span style={{ color: getUserStatusColor() }}>{userStatus}</span></h3>
       {successMessage && <div style={{ color: "green", backgroundColor: "#d4edda", border: "1px solid #c3e6cb", padding: 12, borderRadius: 4, marginBottom: 15, fontWeight: "bold" }}>{successMessage}</div>}
       {error && <div style={{ color: "#721c24", backgroundColor: "#f8d7da", border: "1px solid #f5c6cb", padding: 12, borderRadius: 4, marginBottom: 15 }}>{error}</div>}
