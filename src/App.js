@@ -781,7 +781,7 @@ function MainApp({ userName }) {
 
                 {/* PREVIEW/RECAP BUTTON */}
                 {(g.isFinal || !gameInPast) && (
-                  
+                  <a
                     href={`https://www.espn.com/nfl/game/_/gameId/${g.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
