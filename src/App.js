@@ -687,9 +687,22 @@ function MainApp({ userName }) {
               </div>
 
               {/* ----- SPREAD ----- */}
+              {/* ----- SPREAD ----- */}
               <div style={{ fontSize: "0.85em", color: "#666", margin: "8px 0" }}>
                 {g.awaySpread !== "N/A" && g.homeSpread !== "N/A"
-                  ? `${g.away} (${g.awaySpread}) @ ${g.home} (${g.homeSpread})`
+                  ? (() => {
+                      const awaySpreadNum = parseFloat(g.awaySpread);
+                      const homeSpreadNum = parseFloat(g.homeSpread);
+                      const favorite = awaySpreadNum < 0 ? `${g.away} (${g.awaySpread})` : homeSpreadNum < 0 ? `${g.home} (${g.homeSpread})` : null;
+                      
+                      if (awaySpreadNum < 0) {
+                        return `${g.away} (${g.awaySpread}) @ ${g.home}`;
+                      } else if (homeSpreadNum < 0) {
+                        return `${g.away} @ ${g.home} (${g.homeSpread})`;
+                      } else {
+                        return `${g.away} @ ${g.home}`;
+                      }
+                    })()
                   : "Spreads unavailable"}
               </div>
 
