@@ -1,4 +1,4 @@
-// Updated: November 03, 2025 - Added final scores + bold winner + FINAL badge
+// Updated: November 05, 2025 - preview button added
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
@@ -687,7 +687,6 @@ function MainApp({ userName }) {
               </div>
 
               {/* ----- SPREAD ----- */}
-              {/* ----- SPREAD ----- */}
               <div style={{ fontSize: "0.85em", color: "#666", margin: "8px 0" }}>
                 {g.awaySpread !== "N/A" && g.homeSpread !== "N/A"
                   ? (() => {
@@ -780,10 +779,10 @@ function MainApp({ userName }) {
                   {userPickedHome ? `Picked ${g.home}` : `Pick ${g.home}`}
                 </button>
 
-                {/* RECAP BUTTON – only for final games */}
-                {g.isFinal && (
-                  <a
-                    href={`https://www.espn.com/nfl/recap?gameId=${g.id}`}
+                {/* PREVIEW/RECAP BUTTON */}
+                {(g.isFinal || !gameInPast) && (
+                  
+                    href={`https://www.espn.com/nfl/game/_/gameId/${g.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
@@ -800,9 +799,9 @@ function MainApp({ userName }) {
                       fontSize: "0.9em",
                       cursor: "pointer",
                     }}
-                    title="View ESPN recap"
+                    title={g.isFinal ? "View ESPN recap" : "View ESPN preview"}
                   >
-                    <span style={{ marginRight: 4 }}>Recap</span>
+                    <span style={{ marginRight: 4 }}>{g.isFinal ? "Recap" : "Preview"}</span>
                   </a>
                 )}
               </div>
