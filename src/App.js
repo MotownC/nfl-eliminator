@@ -1,4 +1,4 @@
-// Updated: November 05, 2025 - preview button added
+// Updated: November 05, 2025 - fixed spreads
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue } from "firebase/database";
