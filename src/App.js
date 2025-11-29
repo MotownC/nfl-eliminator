@@ -308,6 +308,8 @@ function MainApp({ userName }) {
         const homeScore = homeComp?.score ? parseInt(homeComp.score, 10) : null;
         const awayScore = awayComp?.score ? parseInt(awayComp.score, 10) : null;
         const isFinal = ev.status?.type?.completed === true;
+        const homeRecord = homeComp?.records?.find(r => r.type === "total")?.summary || null;
+        const awayRecord = awayComp?.records?.find(r => r.type === "total")?.summary || null;
 
         return {
           id: ev.id,
@@ -320,7 +322,9 @@ function MainApp({ userName }) {
           homeWinner: homeComp?.winner ?? null,
           awayWinner: awayComp?.winner ?? null,
           homeSpread: "N/A",
-          awaySpread: "N/A"
+          awaySpread: "N/A",
+          homeRecord,
+          awayRecord
         };
       });
 
@@ -637,7 +641,9 @@ function MainApp({ userName }) {
                   style={{ width: 28, height: 28 }}
                   onError={(e) => (e.target.style.display = "none")}
                 />
-                <span style={{ flex: 1, minWidth: 140 }}>{g.away}</span>
+                <span style={{ flex: 1, minWidth: 140 }}>
+                  {g.away} {g.awayRecord && `(${g.awayRecord})`}
+                </span>
 
                 {g.isFinal ? (
                   <span
@@ -669,7 +675,9 @@ function MainApp({ userName }) {
                   style={{ width: 28, height: 28 }}
                   onError={(e) => (e.target.style.display = "none")}
                 />
-                <span style={{ flex: 1, minWidth: 140 }}>{g.home}</span>
+               <span style={{ flex: 1, minWidth: 140 }}>
+                {g.home} {g.homeRecord && `(${g.homeRecord})`}
+              </span>
 
                 {g.isFinal ? (
                   <span
