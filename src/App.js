@@ -189,6 +189,89 @@ function MainApp({ userName }) {
     return result;
   };
 
+  const calculateWinner = () => {
+    // Get all active and eliminated players
+    const activePlayers = Object.entries(seasonStandings).filter(([_, stats]) => stats?.eliminatorActive);
+    const eliminatedPlayers = Object.entries(seasonStandings).filter(([_, stats]) => !stats?.eliminatorActive);
+    
+    // If exactly one person is still active, they're the winner
+    if (activePlayers.length === 1) {
+      return activePlayers[0][0];
+    }
+    
+    // If everyone is eliminated, use tiebreaker
+    if (activePlayers.length === 0 && eliminatedPlayers.length > 0) {
+      // Calculate total margins for all eliminated players
+      const playerMargins = eliminatedPlayers.map(([playerName, _]) => {
+        let totalMargin = 0;
+        const weekMargins = [];
+        
+        Object.entries(weeklyPicks).forEach(([weekNum, weekData]) => {
+          const pick = weekData[playerName];
+          if (pick && pick.result === true && pick.margin !== null && pick.margin !== undefined) {
+            totalMargin += pick.margin;
+            weekMargins.push({ week: Number(weekNum), margin: pick.margin });
+          }
+        });
+        
+        return { playerName, totalMargin, weekMargins };
+      });
+      
+      // Sort by total margin descending
+      playerMargins.sort((a, b) => b.totalMargin - a.totalMargin);
+      
+      // Check if there's a tie at the top
+      const topMargin = playerMargins[0].totalMargin;
+      const tiedPlayers = playerMargins.filter(p => p.totalMargin === topMargin);
+      
+      if (tiedPlayers.length === 1) {
+        return tiedPlayers[0].playerName;
+      }
+      
+      // Tiebreaker: head-to-head week comparison
+      if (tiedPlayers.length === 2) {
+        const [p1, p2] = tiedPlayers;
+        let p1Wins = 0;
+        let p2Wins = 0;
+        
+        // Compare each week both players have margins
+        const allWeeks = new Set([...p1.weekMargins.map(w => w.week), ...p2.weekMargins.map(w => w.week)]);
+        allWeeks.forEach(week => {
+          const p1Week = p1.weekMargins.find(w => w.week === week);
+          const p2Week = p2.weekMargins.find(w => w.week === week);
+          
+          if (p1Week && p2Week) {
+            if (p1Week.margin > p2Week.margin) p1Wins++;
+            else if (p2Week.margin > p1Week.margin) p2Wins++;
+          }
+        });
+        
+        if (p1Wins > p2Wins) return p1.playerName;
+        if (p2Wins > p1Wins) return p2.playerName;
+        
+        // Final tiebreaker: most recent week's margin
+        const p1Recent = p1.weekMargins.length > 0 ? p1.weekMargins[p1.weekMargins.length - 1].margin : 0;
+        const p2Recent = p2.weekMargins.length > 0 ? p2.weekMargins[p2.weekMargins.length - 1].margin : 0;
+        
+        if (p1Recent > p2Recent) return p1.playerName;
+        if (p2Recent > p1Recent) return p2.playerName;
+      }
+      
+      // Multiple players tied or no clear winner
+      // For 3+ way ties, use total margin winner (first in sorted list)
+      return tiedPlayers[0].playerName;
+    }
+    
+    return null;
+  };
+
+  const winner = calculateWinner();
+  console.log("=== WINNER DEBUG ===");
+console.log("Winner calculated:", winner);
+console.log("Current user:", userName);
+console.log("seasonStandings:", seasonStandings);
+console.log("Active players:", Object.entries(seasonStandings).filter(([_, stats]) => stats?.eliminatorActive));
+console.log("===================");
   const retryFirebaseWrite = async (ref, data, maxAttempts = 3, delay = 1000) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -269,6 +352,16 @@ function MainApp({ userName }) {
             console.warn(`  Warning: No winner determined for game ${game.id}, skipping update for ${playerName}`);
             continue;
           }
+          // Calculate margin of victory if they won
+          let margin = null;
+          if (winner && game.homeScore !== null && game.awayScore !== null) {
+            if (isHome) {
+              margin = game.homeScore - game.awayScore;
+            } else {
+              margin = game.awayScore - game.homeScore;
+            }
+            console.log(`  ${playerName} won by ${margin} points`);
+          }
 
           if (isColtsGame && (isHome || isAway)) {
             console.log(`  Colts pick update for ${playerName}: Pick=${pickData.pick}, Result=${winner ? 'Won' : 'Lost'}`);
@@ -277,7 +370,8 @@ function MainApp({ userName }) {
           const playerRef = ref(db, `weeks/${currentWeek}/${playerName}`);
           await retryFirebaseWrite(playerRef, {
             ...pickData,
-            result: winner
+            result: winner,
+            margin: margin
           });
           console.log(`Updated ${playerName}'s pick: ${pickData.pick} = ${winner ? 'Won' : 'Lost'}`);
         }
@@ -463,6 +557,16 @@ function MainApp({ userName }) {
   };
 
   useEffect(() => {
+    // Validate session on mount
+    const storedUser = sessionStorage.getItem("nflEliminatorUser");
+    if (!storedUser || !APPROVED_USERS.includes(storedUser)) {
+      console.warn("Invalid or missing user session detected");
+      sessionStorage.removeItem("nflEliminatorUser");
+      setError("Session invalid. Please log in again.");
+      setTimeout(() => window.location.reload(), 2000);
+      return;
+    }
+    
     fetchGames();
     const interval = setInterval(fetchGames, 300 * 1000);
     return () => {
@@ -472,13 +576,28 @@ function MainApp({ userName }) {
   }, []);
 
   const getUserStatusColor = () => {
+    if (winner === userName) return "#FFD700";
     if (userStatus === "Alive") return "#28a745";
     if (userStatus === "Eliminated") return "#dc3545";
     return "#6c757d";
   };
 
+  const getUserStatusText = () => {
+    if (winner === userName) return "Winner!";
+    return userStatus;
+  };
+
   const makePick = async (team) => {
     if (!week || !db) { setError("Not ready to pick yet"); return; }
+    
+    // CRITICAL: Validate user is authenticated and approved
+    if (!userName || !APPROVED_USERS.includes(userName)) {
+      setError("Session expired. Please log in again.");
+      sessionStorage.removeItem("nflEliminatorUser");
+      window.location.reload();
+      return;
+    }
+    
     if (allPicks[userName]?.pick) { setError("You've already made your pick for this week. Picks cannot be changed."); return; }
     try {
       const weekRef = ref(db, `weeks/${week}/${userName}`);
@@ -554,7 +673,7 @@ function MainApp({ userName }) {
             <strong>Overall Standings:</strong> <span style={{ color: "#1E90FF", fontWeight: "bold" }}>{calculateStandingsPosition(userName)}</span>
           </div>
           <div style={{ fontSize: "1.05em" }}>
-            <strong>Eliminator Status:</strong> <span style={{ color: getUserStatusColor(), fontWeight: "bold" }}>{userStatus}</span>
+            <strong>Eliminator Status:</strong> <span style={{ color: getUserStatusColor(), fontWeight: "bold" }}>{getUserStatusText()}</span>
           </div>
         </div>
       </div>
@@ -842,7 +961,9 @@ function MainApp({ userName }) {
                 <td style={{ border: "1px solid #ccc", padding: 8 }}>{user}</td>
                 <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>{stats?.seasonPoints || 0}</td>
                 <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center" }}>{calculateStreak(user)}</td>
-                <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center", fontSize: "1.5em" }}>{stats?.eliminatorActive ? "😊" : "💀"}</td>
+                <td style={{ border: "1px solid #ccc", padding: 8, textAlign: "center", fontSize: "1.5em" }}>
+  {winner === user ? "🏆" : stats?.eliminatorActive ? "😊" : "💀"}
+</td>
               </tr>
             ))}
           </tbody>
