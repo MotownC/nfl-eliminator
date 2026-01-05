@@ -506,15 +506,19 @@ function MainApp({ userName }) {
       setWeeklyPicks(allWeeks);
       const standings = {};
       APPROVED_USERS.forEach(playerName => {
-        standings[playerName] = { seasonPoints: 0, eliminatorActive: true };
+        standings[playerName] = { seasonPoints: 0, eliminatorActive: true, totalMargin: 0 };
       });
       Object.entries(allWeeks).forEach(([weekNum, weekData]) => {
         Object.entries(weekData).forEach(([playerName, pickData]) => {
           if (!standings[playerName]) {
-            standings[playerName] = { seasonPoints: 0, eliminatorActive: true };
+            standings[playerName] = { seasonPoints: 0, eliminatorActive: true, totalMargin: 0 };
           }
           if (pickData.result === true) {
             standings[playerName].seasonPoints += 1;
+            // Add margin to total if available
+            if (pickData.margin !== null && pickData.margin !== undefined) {
+              standings[playerName].totalMargin += pickData.margin;
+            }
           } else if (pickData.result === false) {
             standings[playerName].eliminatorActive = false;
           }
@@ -928,6 +932,10 @@ function MainApp({ userName }) {
               const winsA = a[1]?.seasonPoints || 0;
               const winsB = b[1]?.seasonPoints || 0;
               if (winsB !== winsA) return winsB - winsA;
+              // If wins are tied, sort by total margin (higher margin wins)
+              const marginA = a[1]?.totalMargin || 0;
+              const marginB = b[1]?.totalMargin || 0;
+              if (marginB !== marginA) return marginB - marginA;
               return a[0].localeCompare(b[0]);
             }).map(([user, stats]) => (
               <tr key={user}>
