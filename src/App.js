@@ -193,85 +193,58 @@ function MainApp({ userName }) {
     // Get all active and eliminated players
     const activePlayers = Object.entries(seasonStandings).filter(([_, stats]) => stats?.eliminatorActive);
     const eliminatedPlayers = Object.entries(seasonStandings).filter(([_, stats]) => !stats?.eliminatorActive);
-    
+
     // If exactly one person is still active, they're the winner
     if (activePlayers.length === 1) {
       return activePlayers[0][0];
     }
-    
-    // If everyone is eliminated, use tiebreaker
+
+    // If everyone is eliminated, find who was eliminated LAST (lasted longest)
     if (activePlayers.length === 0 && eliminatedPlayers.length > 0) {
-      // Calculate total margins for all eliminated players
-      const playerMargins = eliminatedPlayers.map(([playerName, _]) => {
-        let totalMargin = 0;
-        const weekMargins = [];
-        
-        Object.entries(weeklyPicks).forEach(([weekNum, weekData]) => {
+      console.log("*** ELIMINATOR WINNER CALCULATION ***");
+      console.log("weeklyPicks:", weeklyPicks);
+
+      // Find when each player was eliminated (first week they lost)
+      const playerEliminations = eliminatedPlayers.map(([playerName, _]) => {
+        let eliminatedWeek = null;
+
+        // IMPORTANT: Sort weeks numerically to find the FIRST loss
+        const sortedWeeks = Object.entries(weeklyPicks).sort((a, b) => Number(a[0]) - Number(b[0]));
+
+        // Find the first week they lost
+        sortedWeeks.forEach(([weekNum, weekData]) => {
           const pick = weekData[playerName];
-          if (pick && pick.result === true && pick.margin !== null && pick.margin !== undefined) {
-            totalMargin += pick.margin;
-            weekMargins.push({ week: Number(weekNum), margin: pick.margin });
+          if (pick && pick.result === false && eliminatedWeek === null) {
+            eliminatedWeek = Number(weekNum);
           }
         });
-        
-        return { playerName, totalMargin, weekMargins };
+
+        return { playerName, eliminatedWeek: eliminatedWeek || 0 };
       });
-      
-      // Sort by total margin descending
-      playerMargins.sort((a, b) => b.totalMargin - a.totalMargin);
-      
-      // Check if there's a tie at the top
-      const topMargin = playerMargins[0].totalMargin;
-      const tiedPlayers = playerMargins.filter(p => p.totalMargin === topMargin);
-      
-      if (tiedPlayers.length === 1) {
-        return tiedPlayers[0].playerName;
-      }
-      
-      // Tiebreaker: head-to-head week comparison
-      if (tiedPlayers.length === 2) {
-        const [p1, p2] = tiedPlayers;
-        let p1Wins = 0;
-        let p2Wins = 0;
-        
-        // Compare each week both players have margins
-        const allWeeks = new Set([...p1.weekMargins.map(w => w.week), ...p2.weekMargins.map(w => w.week)]);
-        allWeeks.forEach(week => {
-          const p1Week = p1.weekMargins.find(w => w.week === week);
-          const p2Week = p2.weekMargins.find(w => w.week === week);
-          
-          if (p1Week && p2Week) {
-            if (p1Week.margin > p2Week.margin) p1Wins++;
-            else if (p2Week.margin > p1Week.margin) p2Wins++;
-          }
-        });
-        
-        if (p1Wins > p2Wins) return p1.playerName;
-        if (p2Wins > p1Wins) return p2.playerName;
-        
-        // Final tiebreaker: most recent week's margin
-        const p1Recent = p1.weekMargins.length > 0 ? p1.weekMargins[p1.weekMargins.length - 1].margin : 0;
-        const p2Recent = p2.weekMargins.length > 0 ? p2.weekMargins[p2.weekMargins.length - 1].margin : 0;
-        
-        if (p1Recent > p2Recent) return p1.playerName;
-        if (p2Recent > p1Recent) return p2.playerName;
-      }
-      
-      // Multiple players tied or no clear winner
-      // For 3+ way ties, use total margin winner (first in sorted list)
-      return tiedPlayers[0].playerName;
+
+      // Sort by elimination week DESCENDING (higher week = lasted longer = winner)
+      playerEliminations.sort((a, b) => b.eliminatedWeek - a.eliminatedWeek);
+
+      console.log("All players by elimination week:");
+      playerEliminations.forEach(p => {
+        console.log(`  ${p.playerName}: Week ${p.eliminatedWeek}`);
+      });
+      console.log("WINNER:", playerEliminations[0].playerName);
+      console.log("***********************************");
+
+      // Return the player eliminated in the latest week
+      return playerEliminations[0].playerName;
     }
-    
+
     return null;
   };
 
   const winner = calculateWinner();
-  console.log("=== WINNER DEBUG ===");
-console.log("Winner calculated:", winner);
-console.log("Current user:", userName);
-console.log("seasonStandings:", seasonStandings);
-console.log("Active players:", Object.entries(seasonStandings).filter(([_, stats]) => stats?.eliminatorActive));
-console.log("===================");
+
+  // Debug logging (remove after fixing)
+  if (winner) {
+    console.log("🏆 ELIMINATOR WINNER:", winner);
+  }
   const retryFirebaseWrite = async (ref, data, maxAttempts = 3, delay = 1000) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
