@@ -1,7 +1,8 @@
 // Updated: November 05, 2025 - fixed spreads
 import React, { useState, useEffect, useRef } from "react";
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, onValue } from "firebase/database";
+import { getDatabase, ref, set, get, onValue } from "firebase/database";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyBcCdQkuY1Q8tZxCxXpHZPWIQq_qgIYHHw",
@@ -12,13 +13,17 @@ const firebaseConfig = {
   appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:539172204231:web:e8fb4778b76b8e247258e2"
 };
 
-let app, db;
+let app, db, auth;
 try {
   app = initializeApp(firebaseConfig);
   db = getDatabase(app);
+  auth = getAuth(app);
 } catch (err) {
   console.error("Firebase initialization failed:", err);
 }
+
+// Email-to-name mappings are stored in Firebase at 'registrations/' path
+// This allows users to self-register with their approved name
 
 const ESPN_API = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard";
 const ODDS_API_KEY = process.env.REACT_APP_ODDS_API_KEY || "f1e2424c4bc6fab51a692a147e0bf88b";
@@ -73,27 +78,92 @@ const APPROVED_USERS = [
 
 function LoginPage({ onLogin }) {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    const trimmedEmail = email.trim().toLowerCase();
     const trimmedName = name.trim();
-    if (!trimmedName) {
-      setError("Please enter your name");
-      return;
+
+    try {
+      if (isSignUp) {
+        // Validate name
+        if (!trimmedName) {
+          setError("Please enter your name.");
+          setLoading(false);
+          return;
+        }
+
+        // Check if name is already taken
+        const registrationsRef = ref(db, 'registrations');
+        const registrationsSnapshot = await get(registrationsRef);
+        const registrations = registrationsSnapshot.val() || {};
+
+        const nameTaken = Object.values(registrations).some(
+          reg => reg.name.toLowerCase() === trimmedName.toLowerCase()
+        );
+
+        if (nameTaken) {
+          setError("This name is already registered. Please use a different name.");
+          setLoading(false);
+          return;
+        }
+
+        // Create Firebase auth account
+        const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+
+        // Save registration to Firebase
+        const userRef = ref(db, `registrations/${userCredential.user.uid}`);
+        await set(userRef, {
+          name: trimmedName,
+          email: trimmedEmail,
+          createdAt: new Date().toISOString()
+        });
+
+        sessionStorage.setItem("nflEliminatorUser", trimmedName);
+        onLogin(trimmedName);
+      } else {
+        // Sign in to existing account
+        const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+
+        // Look up user's name from registrations
+        const userRef = ref(db, `registrations/${userCredential.user.uid}`);
+        const userSnapshot = await get(userRef);
+        const userData = userSnapshot.val();
+
+        if (!userData || !userData.name) {
+          setError("Account found but no registration data. Please contact Craig.");
+          setLoading(false);
+          return;
+        }
+
+        sessionStorage.setItem("nflEliminatorUser", userData.name);
+        onLogin(userData.name);
+      }
+    } catch (err) {
+      console.error("Auth error:", err);
+      if (err.code === 'auth/user-not-found') {
+        setError("No account found. Click 'Create Account' to sign up.");
+      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError("Incorrect password. Please try again.");
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError("Email already in use. Please sign in instead.");
+      } else if (err.code === 'auth/weak-password') {
+        setError("Password must be at least 6 characters.");
+      } else if (err.code === 'auth/invalid-email') {
+        setError("Please enter a valid email address.");
+      } else {
+        setError("Authentication failed. Please try again.");
+      }
+      setLoading(false);
     }
-
-    const approvedUser = APPROVED_USERS.find(
-      user => user.toLowerCase() === trimmedName.toLowerCase()
-    );
-
-    if (!approvedUser) {
-      setError("Name not recognized. Please check your spelling or contact Craig.");
-      return;
-    }
-
-    sessionStorage.setItem("nflEliminatorUser", approvedUser);
-    onLogin(approvedUser);
   };
 
   return (
@@ -101,13 +171,70 @@ function LoginPage({ onLogin }) {
       <div style={{ backgroundColor: "white", padding: 40, borderRadius: 8, boxShadow: "0 2px 10px rgba(0,0,0,0.1)", maxWidth: 400, width: "100%" }}>
         <h1 style={{ textAlign: "center", color: "#333", marginBottom: 30 }}>NFL Eliminator Pool</h1>
         <form onSubmit={handleSubmit}>
+          {isSignUp && (
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", marginBottom: 8, color: "#555", fontWeight: "bold" }}>Your Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => { setName(e.target.value); setError(""); }}
+                placeholder="Enter your name"
+                style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 4, fontSize: 16, boxSizing: "border-box" }}
+                autoFocus
+              />
+            </div>
+          )}
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", marginBottom: 8, color: "#555", fontWeight: "bold" }}>Enter Your Name</label>
-            <input type="text" value={name} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder="Your name" style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 4, fontSize: 16, boxSizing: "border-box" }} autoFocus />
+            <label style={{ display: "block", marginBottom: 8, color: "#555", fontWeight: "bold" }}>Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              placeholder="your@email.com"
+              style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 4, fontSize: 16, boxSizing: "border-box" }}
+              autoFocus={!isSignUp}
+              required
+            />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: "block", marginBottom: 8, color: "#555", fontWeight: "bold" }}>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              placeholder="Enter password"
+              style={{ width: "100%", padding: 10, border: "1px solid #ddd", borderRadius: 4, fontSize: 16, boxSizing: "border-box" }}
+              required
+            />
           </div>
           {error && <div style={{ color: "red", marginBottom: 15, fontSize: "0.9em" }}>{error}</div>}
-          <button type="submit" style={{ width: "100%", padding: 12, backgroundColor: "#1E90FF", color: "white", border: "none", borderRadius: 4, fontSize: 16, fontWeight: "bold", cursor: "pointer" }}>Enter Pool</button>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: 12,
+              backgroundColor: loading ? "#ccc" : "#1E90FF",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              fontSize: 16,
+              fontWeight: "bold",
+              cursor: loading ? "not-allowed" : "pointer",
+              marginBottom: 15
+            }}
+          >
+            {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
+          </button>
         </form>
+        <div style={{ textAlign: "center" }}>
+          <button
+            onClick={() => { setIsSignUp(!isSignUp); setError(""); }}
+            style={{ background: "none", border: "none", color: "#1E90FF", cursor: "pointer", fontSize: 14 }}
+          >
+            {isSignUp ? "Already have an account? Sign In" : "First time? Create Account"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -536,9 +663,8 @@ function MainApp({ userName }) {
   useEffect(() => {
     // Validate session on mount
     const storedUser = sessionStorage.getItem("nflEliminatorUser");
-    if (!storedUser || !APPROVED_USERS.includes(storedUser)) {
-      console.warn("Invalid or missing user session detected");
-      sessionStorage.removeItem("nflEliminatorUser");
+    if (!storedUser) {
+      console.warn("No user session detected");
       setError("Session invalid. Please log in again.");
       setTimeout(() => window.location.reload(), 2000);
       return;
@@ -567,8 +693,8 @@ function MainApp({ userName }) {
   const makePick = async (team) => {
     if (!week || !db) { setError("Not ready to pick yet"); return; }
     
-    // CRITICAL: Validate user is authenticated and approved
-    if (!userName || !APPROVED_USERS.includes(userName)) {
+    // CRITICAL: Validate user is authenticated
+    if (!userName) {
       setError("Session expired. Please log in again.");
       sessionStorage.removeItem("nflEliminatorUser");
       window.location.reload();
@@ -998,10 +1124,61 @@ function App({ userName: initialUserName = null }) {
     const stored = sessionStorage.getItem("nflEliminatorUser");
     return initialUserName || stored || null;
   });
-  const handleLogout = () => {
-    sessionStorage.removeItem("nflEliminatorUser");
-    setUserName(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // User is signed in, look up their name from registrations
+        try {
+          const userRef = ref(db, `registrations/${user.uid}`);
+          const userSnapshot = await get(userRef);
+          const userData = userSnapshot.val();
+
+          if (userData && userData.name) {
+            sessionStorage.setItem("nflEliminatorUser", userData.name);
+            setUserName(userData.name);
+          } else {
+            // No registration found, sign them out
+            signOut(auth);
+            sessionStorage.removeItem("nflEliminatorUser");
+            setUserName(null);
+          }
+        } catch (err) {
+          console.error("Error fetching user data:", err);
+          sessionStorage.removeItem("nflEliminatorUser");
+          setUserName(null);
+        }
+      } else {
+        // User is signed out
+        sessionStorage.removeItem("nflEliminatorUser");
+        setUserName(null);
+      }
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      sessionStorage.removeItem("nflEliminatorUser");
+      setUserName(null);
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", fontFamily: "Arial, sans-serif" }}>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
   if (!userName) return <LoginPage onLogin={setUserName} />;
   return <MainApp userName={userName} onLogout={handleLogout} />;
 }
