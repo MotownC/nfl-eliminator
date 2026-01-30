@@ -676,6 +676,7 @@ function MainApp({ userName }) {
       clearInterval(interval);
       Object.values(listenersRef.current).forEach(unsubscribe => unsubscribe?.());
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getUserStatusColor = () => {
@@ -922,8 +923,7 @@ function MainApp({ userName }) {
                   ? (() => {
                       const awaySpreadNum = parseFloat(g.awaySpread);
                       const homeSpreadNum = parseFloat(g.homeSpread);
-                      const favorite = awaySpreadNum < 0 ? `${g.away} (${g.awaySpread})` : homeSpreadNum < 0 ? `${g.home} (${g.homeSpread})` : null;
-                      
+
                       if (awaySpreadNum < 0) {
                         return `${g.away} (${g.awaySpread}) @ ${g.home}`;
                       } else if (homeSpreadNum < 0) {
